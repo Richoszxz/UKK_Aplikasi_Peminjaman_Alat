@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:creaventory/export.dart';
+import 'package:creaventory/services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -10,24 +11,58 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+  final AuthService _authService = AuthService();
 
-  void handleLogin() {
+  // State tambahan untuk UI
+  bool _isLoading = false;
+  bool _isObscured = true;
+
+  @override
+  void dispose() {
+    // Membersihkan controller saat widget dihapus dari memori
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
+  void handleLogin() async {
     if (_formKey.currentState!.validate()) {
-      final email = emailController.text;
-      final password = passwordController.text;
+      setState(() => _isLoading = true);
+      try {
+        final response = await _authService.signIn(
+          emailController.text
+              .trim(), // Gunakan trim untuk hapus spasi tak sengaja
+          passwordController.text,
+        );
 
-      // TODO: Integrasi Auth (Supabase / Firebase / API)
-      debugPrint("Email: $email");
-      debugPrint("Password: $password");
-
-      Navigator.pushNamed(context, '/dashboard');
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Login berhasil (dummy)")));
+        if (response.session != null) {
+          if (!mounted) return;
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            '/dashboard',
+            (route) => false,
+          );
+        } else {
+          if (!mounted) return;
+          AlertHelper.showError(
+            context,
+            'Login gagal! Periksa email dan password.',
+          );
+        }
+      } on AuthException catch (e) {
+        if (!mounted) return;
+        final errorTxt = e.message.toLowerCase();
+        AlertHelper.showError(
+          context,
+          errorTxt.contains('invalid login credentials')
+              ? "Email atau password salah!"
+              : e.message,
+        );
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -38,8 +73,8 @@ class _LoginScreenState extends State<LoginScreen> {
         children: [
           Positioned.fill(
             child: Image.asset(
-              'assets/images/bg_login_mobile.png',
-              fit: BoxFit.fitHeight,
+              'assets/images/bg_login_page.png',
+              fit: BoxFit.cover
             ),
           ),
 
@@ -116,7 +151,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ],
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 50),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 30,
+                    vertical: 50,
+                  ),
                   child: Column(
                     children: [
                       Form(
@@ -133,6 +171,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             TextFormField(
                               controller: emailController,
+                              style: GoogleFonts.poppins(
+                                color: Color(0xFF424242)
+                              ),
                               decoration: InputDecoration(
                                 hintText: "email@example.com",
                                 hintStyle: GoogleFonts.poppins(
@@ -142,6 +183,12 @@ class _LoginScreenState extends State<LoginScreen> {
                                   borderRadius: BorderRadius.all(
                                     Radius.circular(10),
                                   ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: BorderSide(
+                                    color: Theme.of(context).colorScheme.primary
+                                  )
                                 ),
                               ),
                               validator: (value) {
@@ -161,20 +208,36 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             TextFormField(
                               controller: passwordController,
-                              obscureText: true,
+                              style: GoogleFonts.poppins(
+                                color: Color(0xFF424242)
+                              ),
+                              obscureText: _isObscured,
                               decoration: InputDecoration(
-                                labelText: "masukkan password",
-                                labelStyle: GoogleFonts.poppins(
+                                hintText: "masukkan password",
+                                hintStyle: GoogleFonts.poppins(
                                   color: Color(0xFFD1D1D1),
                                 ),
-                                suffixIcon: Icon(
-                                  Icons.visibility,
-                                  color: Color(0xFF073D1C),
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _isObscured
+                                        ? Icons.visibility
+                                        : Icons.visibility_off,
+                                    color: const Color(0xFF073D1C),
+                                  ),
+                                  onPressed: () => setState(
+                                    () => _isObscured = !_isObscured,
+                                  ),
                                 ),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.all(
                                     Radius.circular(10),
                                   ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: BorderSide(
+                                    color: Theme.of(context).colorScheme.primary
+                                  )
                                 ),
                               ),
                               validator: (value) {
@@ -184,7 +247,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 return null;
                               },
                             ),
-                            
+
                             SizedBox(height: 45),
                             SizedBox(
                               width: double.infinity,
@@ -202,7 +265,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: ElevatedButton(
-                                  onPressed: handleLogin,
+                                  onPressed: _isLoading ? null : handleLogin,
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor:
                                         Colors.transparent, // wajib transparan
@@ -212,20 +275,29 @@ class _LoginScreenState extends State<LoginScreen> {
                                       borderRadius: BorderRadius.circular(10),
                                     ),
                                   ),
-                                  child: Text(
-                                    "Login",
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 18,
-                                      color: Colors.white,
-                                    ),
-                                  ),
+                                  child: _isLoading
+                                      ? const SizedBox(
+                                          height: 20,
+                                          width: 20,
+                                          child: CircularProgressIndicator(
+                                            color: Colors.white,
+                                            strokeWidth: 2,
+                                          ),
+                                        )
+                                      : Text(
+                                          "Login",
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 18,
+                                            color: Colors.white,
+                                          ),
+                                        ),
                                 ),
                               ),
                             ),
                           ],
                         ),
                       ),
-                      SizedBox(height: 45),
+                      SizedBox(height: 20),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [

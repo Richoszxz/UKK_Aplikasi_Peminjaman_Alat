@@ -11,69 +11,37 @@ class ManajemenAlatScreen extends StatefulWidget {
 }
 
 class _ManajemenAlatScreenState extends State<ManajemenAlatScreen> {
-  List<Map<String, dynamic>> alatList = [
-    {
-      "nama": "Tablet iPad",
-      "kategori": "Elektronik",
-      "stok": 1,
-      "spesifikasi": "Layar 10.2 inci, Wi-Fi, 64GB",
-      "deskripsi": "Tablet canggih untuk produktivitas dan hiburan.",
-      "gambar": null,
-    },
-    {
-      "nama": "Kamera DSLR",
-      "kategori": "Fotografi",
-      "stok": 1,
-      "spesifikasi": "Sensor Full Frame, 24MP",
-      "deskripsi": "Kamera profesional untuk fotografi berkualitas tinggi.",
-      "gambar": null,
-    },
-    {
-      "nama": "Proyektor Portabel",
-      "kategori": "Presentasi",
-      "stok": 1,
-      "spesifikasi": "Resolusi 1080p, Konektivitas HDMI",
-      "deskripsi": "Proyektor ringan untuk presentasi di mana saja.",
-      "gambar": null,
-    },
-    {
-      "nama": "Speaker Bluetooth",
-      "kategori": "Audio",
-      "stok": 1,
-      "spesifikasi": "Daya 20W, Tahan Air",
-      "deskripsi": "Speaker nirkabel untuk musik di luar ruangan.",
-      "gambar": null,
-    },
-    {
-      "nama": "Laptop Gaming",
-      "kategori": "Komputer",
-      "stok": 1,
-      "spesifikasi": "Intel i7, RAM 16GB, GPU RTX 3060",
-      "deskripsi": "Laptop bertenaga tinggi untuk gaming dan multitasking.",
-      "gambar": null,
-    },
-  ];
+  final AlatService _alatService = AlatService();
+  final KategoriService _kategoriService = KategoriService();
 
+  // Tambahkan variabel ini agar tidak error
   String selectedKategori = "Semua";
+  List<String> kategoriList = ["Semua"];
 
-  List<String> get kategoriList {
-    final kategori = alatList
-        .map((e) => e["kategori"].toString())
-        .toSet()
-        .toList();
+  // Simpan future dalam variabel agar tidak reload terus saat setState
+  late Future<List<dynamic>> _futureAlat;
 
-    kategori.insert(0, "Semua");
-    return kategori;
+  @override
+  void initState() {
+    super.initState();
+    _futureAlat = _alatService.ambilAlat();
+    _loadKategori();
   }
 
-  List<Map<String, dynamic>> get filteredAlat {
-    if (selectedKategori == "Semua") {
-      return alatList;
+  // Mengambil kategori langsung dari Service
+  Future<void> _loadKategori() async {
+    try {
+      final listModel = await _kategoriService
+          .ambilKategori(); // Pastikan fungsi ini ada di service
+      setState(() {
+        final listString = listModel.map(
+          (item) => item.namaKategori.toString(),
+        );
+        kategoriList = ["Semua", ...listString];
+      });
+    } catch (e) {
+      debugPrint("Gagal memuat kategori: $e");
     }
-
-    return alatList
-        .where((alat) => alat["kategori"] == selectedKategori)
-        .toList();
   }
 
   @override
@@ -91,6 +59,7 @@ class _ManajemenAlatScreenState extends State<ManajemenAlatScreen> {
               children: [
                 Container(
                   height: 35,
+                  width: 100,
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.primary,
@@ -98,6 +67,7 @@ class _ManajemenAlatScreenState extends State<ManajemenAlatScreen> {
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
+                      isExpanded: true,
                       value: selectedKategori,
                       dropdownColor: Theme.of(context).colorScheme.primary,
                       icon: Icon(Icons.arrow_drop_down, color: Colors.white),
@@ -124,11 +94,14 @@ class _ManajemenAlatScreenState extends State<ManajemenAlatScreen> {
 
                 const SizedBox(width: 10),
 
-                Text(
-                  "Kategori terpilih: $selectedKategori",
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    color: Color(0xFF424242),
+                Expanded(
+                  child: Text(
+                    "Kategori terpilih: $selectedKategori",
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: Color(0xFF424242),
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
@@ -136,78 +109,135 @@ class _ManajemenAlatScreenState extends State<ManajemenAlatScreen> {
           ),
 
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 15),
-              child: GridView.builder(
-                itemCount: alatList.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2, // 2 kolom
-                  crossAxisSpacing: 10,
-                  childAspectRatio: 0.70, // tinggi card
-                ),
-                itemBuilder: (context, index) {
-                  final alat = alatList[index];
+            child: FutureBuilder(
+              future: _futureAlat,
+              builder: (context, asyncSnapshot) {
+                if (asyncSnapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (asyncSnapshot.hasError)
+                  return Center(child: Text("Error: ${asyncSnapshot.error}"));
 
-                  return CardListAlatWidget(
-                    namaAlat: alat["nama"]!,
-                    spesifikasiAlat: alat["spesifikasi"]!,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => DetailAlatScreen(
-                            heroTag: "alat_$index",
-                            alat: alat,
-                          ),
+                // LOGIKA FILTER DISINI
+                final semuaData = asyncSnapshot.data ?? [];
+                final dataAlat = selectedKategori == "Semua"
+                    ? semuaData
+                    : semuaData
+                          .where(
+                            (alat) => alat.namaKategori == selectedKategori,
+                          )
+                          .toList();
+
+                if (dataAlat.isEmpty) {
+                  return const Center(
+                    child: Text("Tidak ada alat di kategori ini."),
+                  );
+                }
+
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 15),
+                  child: GridView.builder(
+                    itemCount: dataAlat.length,
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2, // 2 kolom
+                          crossAxisSpacing: 10,
+                          childAspectRatio: 0.70, // tinggi card
                         ),
+                    itemBuilder: (context, index) {
+                      final alat = dataAlat[index];
+
+                      return CardListAlatWidget(
+                        namaAlat: alat.namaAlat,
+                        spesifikasiAlat: alat.spesifikasiAlat as String,
+                        gambarUrl: alat.gambarUrl,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => DetailAlatScreen(
+                                heroTag: "alat_$index",
+                                alat: alat,
+                              ),
+                            ),
+                          );
+                        },
+                        tombolAksi: [
+                          ElevatedButton(
+                            onPressed: () =>
+                                Navigator.of(context).pushNamed('/edit_alat'),
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 25,
+                              ),
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.secondary,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            child: Text(
+                              "Edit",
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSecondary,
+                              ),
+                            ),
+                          ),
+                          ElevatedButton(
+                            onPressed: () {
+                              AlertHelper.showConfirm(
+                                context,
+                                judul: "Konfirmasi Hapus Alat !",
+                                pesan: "Apakah anda yakin menghapus alat ini ?",
+                                onConfirm: () async {
+                                  try {
+                                    await _alatService.hapusAlat(alat.idUser!);
+
+                                    AlertHelper.showSuccess(
+                                      context,
+                                      'Berhasil menghapus alat !',
+                                    );
+
+                                    setState(() {});
+                                  } catch (e) {
+                                    AlertHelper.showError(
+                                      context,
+                                      'Gagal menghapus alat !',
+                                    );
+                                    debugPrint('Error: $e');
+                                  }
+                                },
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                              ),
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.primary,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            child: Text(
+                              "Hapus",
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                color: Theme.of(context).colorScheme.onPrimary,
+                              ),
+                            ),
+                          ),
+                        ],
                       );
                     },
-                    tombolAksi: [
-                      ElevatedButton(
-                        onPressed: () =>
-                            Navigator.of(context).pushNamed('/edit_alat'),
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 25),
-                          backgroundColor: Theme.of(
-                            context,
-                          ).colorScheme.secondary,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        child: Text(
-                          "Edit",
-                          style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            color: Theme.of(context).colorScheme.onSecondary,
-                          ),
-                        ),
-                      ),
-                      ElevatedButton(
-                        onPressed: () {
-                          debugPrint("Hapus ${alat["nama"]}");
-                        },
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          backgroundColor: Theme.of(
-                            context,
-                          ).colorScheme.primary,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        child: Text(
-                          "Hapus",
-                          style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            color: Theme.of(context).colorScheme.onPrimary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              ),
+                  ),
+                );
+              },
             ),
           ),
         ],
@@ -220,24 +250,3 @@ class _ManajemenAlatScreenState extends State<ManajemenAlatScreen> {
     );
   }
 }
-
-// Expanded(
-//                   child: ElevatedButton(
-//                     onPressed: () {
-//                       debugPrint("Pinjam ${alat["nama"]}");
-//                     },
-//                     style: ElevatedButton.styleFrom(
-//                       backgroundColor: Theme.of(context).colorScheme.primary,
-//                       shape: RoundedRectangleBorder(
-//                         borderRadius: BorderRadius.circular(10),
-//                       ),
-//                     ),
-//                     child: Text(
-//                       "+ Pinjam",
-//                       style: GoogleFonts.poppins(
-//                         fontSize: 12,
-//                         color: Theme.of(context).colorScheme.onPrimary,
-//                       ),
-//                     ),
-//                   ),
-//                 ),

@@ -1,5 +1,6 @@
+import 'package:creaventory/export.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class NavigationDrawerWidget extends StatefulWidget {
   const NavigationDrawerWidget({super.key});
@@ -9,180 +10,134 @@ class NavigationDrawerWidget extends StatefulWidget {
 }
 
 class _NavigationDrawerWidgetState extends State<NavigationDrawerWidget> {
+  final _supabase = SupabaseService.client;
+  String? _role;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRole(); // Ambil role saat drawer pertama kali dibuat
+  }
+
+  Future<void> _loadRole() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _role = prefs.getString('user_role') ?? 'peminjam';
+    });
+  }
+
+  // Fungsi ambil username dari tabel pengguna
+  Future<String> _getUsername() async {
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user == null) return "Guest";
+      
+      final data = await _supabase
+          .from('pengguna')
+          .select('username')
+          .eq('id_user', user.id)
+          .single();
+      
+      return data['username'] ?? "User";
+    } catch (e) {
+      return "User Creaventory";
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Jika role belum keload, tampilkan loading/drawer kosong sebentar
+    if (_role == null) return const Drawer(child: Center(child: CircularProgressIndicator()));
+
     return Drawer(
-      backgroundColor: Color(0xFFD0E6D1),
+      backgroundColor: const Color(0xFFD0E6D1),
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
-          SizedBox(
-            height: 260,
-            child: DrawerHeader(
-              padding: EdgeInsets.all(20),
-              decoration: BoxDecoration(color: Color(0xFF248250)),
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    CircleAvatar(
-                      radius: 50,
-                      backgroundColor: Color(0xFFD0E6D1),
-                      child: Icon(
-                        Icons.account_circle_outlined,
-                        size: 90,
-                        color: Color(0xFF248250),
-                      ),
-                    ),
-                    Text(
-                      "Admin Creaventory",
-                      style: GoogleFonts.poppins(
-                        color: Color(0xFFD0E6D1),
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.pushNamed(context, '/profil'),
-                      style: TextButton.styleFrom(padding: EdgeInsets.zero),
-                      child: Text(
-                        "Lihat Profile",
-                        style: GoogleFonts.poppins(
-                          color: Color(0xFFD0E6D1),
-                          fontSize: 18,
-                          decoration: TextDecoration.underline,
+          // HEADER DENGAN USERNAME DINAMIS
+          FutureBuilder<String>(
+            future: _getUsername(),
+            builder: (context, snapshot) {
+              return SizedBox(
+                height: 260,
+                child: DrawerHeader(
+                  padding: const EdgeInsets.all(20),
+                  decoration: const BoxDecoration(color: Color(0xFF248250)),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const CircleAvatar(
+                          radius: 50,
+                          backgroundColor: Color(0xFFD0E6D1),
+                          child: Icon(Icons.account_circle_outlined, size: 90, color: Color(0xFF248250)),
                         ),
-                      ),
+                        Text(
+                          snapshot.data ?? "Loading...",
+                          style: GoogleFonts.poppins(
+                            color: const Color(0xFFD0E6D1),
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pushNamed(context, '/profil'),
+                          style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                          child: Text(
+                            "Lihat Profile",
+                            style: GoogleFonts.poppins(
+                              color: const Color(0xFFD0E6D1),
+                              fontSize: 18,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
-          ),
-          ListTile(
-            leading: Icon(Icons.dashboard_outlined, color: Color(0xFF424242)),
-            title: Text(
-              'Dashboard',
-              style: GoogleFonts.poppins(
-                fontSize: 15,
-                color: Color(0xFF424242),
-              ),
-            ),
-            onTap: () => Navigator.of(context).pushReplacementNamed('/dashboard'),
-          ),
-          ListTile(
-            leading: Icon(Icons.group_outlined, color: Color(0xFF424242)),
-            title: Text(
-              'Manajemen Pengguna',
-              style: GoogleFonts.poppins(
-                fontSize: 15,
-                color: Color(0xFF424242),
-              ),
-            ),
-            onTap: () => Navigator.of(context).pushReplacementNamed('/manajemen_pengguna'),
-          ),
-          ListTile(
-            leading: Icon(Icons.build_outlined, color: Color(0xFF424242)),
-            title: Text(
-              'Manajemen Alat',
-              style: GoogleFonts.poppins(
-                fontSize: 15,
-                color: Color(0xFF424242),
-              ),
-            ),
-            onTap: () => Navigator.of(context).pushReplacementNamed('/manajemen_alat'),
-          ),
-          ListTile(
-            leading: Icon(Icons.category_outlined, color: Color(0xFF424242)),
-            title: Text(
-              'Manajemen Kategori',
-              style: GoogleFonts.poppins(
-                fontSize: 15,
-                color: Color(0xFF424242),
-              ),
-            ),
-            onTap: () => Navigator.of(context).pushReplacementNamed('/manajemen_kategori'),
-          ),
-          ListTile(
-            leading: Icon(Icons.assignment_outlined, color: Color(0xFF424242)),
-            title: Text(
-              'Manajemen Peminjaman',
-              style: GoogleFonts.poppins(
-                fontSize: 15,
-                color: Color(0xFF424242),
-              ),
-            ),
-            onTap: () => Navigator.of(context).pushReplacementNamed('/manajemen_data_peminjaman'),
-          ),
-          ListTile(
-            leading: Icon(Icons.assignment_returned_outlined, color: Color(0xFF424242)),
-            title: Text(
-              'Manajemen Pengembalian',
-              style: GoogleFonts.poppins(
-                fontSize: 15,
-                color: Color(0xFF424242),
-              ),
-            ),
-            onTap: () => Navigator.of(context).pushReplacementNamed('/manajemen_data_pengembalian'),
-          ),
-          ListTile(
-            leading: Icon(Icons.assignment_add, color: Color(0xFF424242)),
-            title: Text(
-              'Pengajuan Peminjaman',
-              style: GoogleFonts.poppins(
-                fontSize: 15,
-                color: Color(0xFF424242),
-              ),
-            ),
-            onTap: () => Navigator.of(context).pushReplacementNamed('/pengajuan_peminjaman'),
-          ),
-          ListTile(
-            leading: Icon(Icons.receipt_long_outlined, color: Color(0xFF424242)),
-            title: Text(
-              'Riwayat Peminjaman',
-              style: GoogleFonts.poppins(
-                fontSize: 15,
-                color: Color(0xFF424242),
-              ),
-            ),
-            onTap: () => Navigator.of(context).pushReplacementNamed('/riwayat_peminjaman'),
-          ),
-          ListTile(
-            leading: Icon(Icons.track_changes_outlined, color: Color(0xFF424242)),
-            title: Text(
-              'Monitoring Peminjaman',
-              style: GoogleFonts.poppins(
-                fontSize: 15,
-                color: Color(0xFF424242),
-              ),
-            ),
-            onTap: () => Navigator.of(context).pushReplacementNamed('/monitoring_peminjaman'),
-          ),
-          ListTile(
-            leading: Icon(Icons.fact_check_outlined, color: Color(0xFF424242)),
-            title: Text(
-              'Monitoring Pengembalian',
-              style: GoogleFonts.poppins(
-                fontSize: 15,
-                color: Color(0xFF424242),
-              ),
-            ),
-            onTap: () => Navigator.of(context).pushReplacementNamed('/monitoring_pengembalian'),
+              );
+            },
           ),
 
-          ListTile(
-            leading: Icon(Icons.history_outlined, color: Color(0xFF424242)),
-            title: Text(
-              'Log Aktivitas',
-              style: GoogleFonts.poppins(
-                fontSize: 15,
-                color: Color(0xFF424242),
-              ),
-            ),
-            onTap: () => Navigator.pushNamed(context, '/log_aktivitas'),
-          ),
+          // 1. SEMUA ROLE
+          _buildItem(Icons.dashboard_outlined, 'Dashboard', '/dashboard'),
+
+          // 2. KHUSUS ADMIN (Manajemen)
+          if (_role == 'admin') ...[
+            _buildItem(Icons.group_outlined, 'Manajemen Pengguna', '/manajemen_pengguna'),
+            _buildItem(Icons.build_outlined, 'Manajemen Alat', '/manajemen_alat'),
+            _buildItem(Icons.category_outlined, 'Manajemen Kategori', '/manajemen_kategori'),
+            _buildItem(Icons.assignment_outlined, 'Manajemen Peminjaman', '/manajemen_data_peminjaman'),
+            _buildItem(Icons.assignment_returned_outlined, 'Manajemen Pengembalian', '/manajemen_data_pengembalian'),
+            _buildItem(Icons.history_outlined, 'Log Aktivitas', '/log_aktivitas'),
+          ],
+
+          // 3. KHUSUS PETUGAS (Monitoring)
+          if (_role == 'petugas') ...[
+            _buildItem(Icons.track_changes_outlined, 'Monitoring Peminjaman', '/monitoring_peminjaman'),
+            _buildItem(Icons.fact_check_outlined, 'Monitoring Pengembalian', '/monitoring_pengembalian'),
+          ],
+
+          // 4. KHUSUS PEMINJAM (Pengajuan & Riwayat)
+          if (_role == 'peminjam') ...[
+            _buildItem(Icons.assignment_add, 'Pengajuan Peminjaman', '/pengajuan_peminjaman'),
+            _buildItem(Icons.receipt_long_outlined, 'Riwayat Peminjaman', '/riwayat_peminjaman'),
+          ],
         ],
       ),
+    );
+  }
+
+  // Helper biar kode ListTile nggak panjang berulang-ulang
+  Widget _buildItem(IconData icon, String title, String route) {
+    return ListTile(
+      leading: Icon(icon, color: const Color(0xFF424242)),
+      title: Text(
+        title,
+        style: GoogleFonts.poppins(fontSize: 15, color: const Color(0xFF424242)),
+      ),
+      onTap: () => Navigator.of(context).pushReplacementNamed(route),
     );
   }
 }

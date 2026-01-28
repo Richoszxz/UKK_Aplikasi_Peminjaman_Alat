@@ -1,5 +1,5 @@
+import 'package:creaventory/export.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'screens/splash_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/signup_screen.dart';
@@ -23,7 +23,9 @@ import 'screens/peminjam/keranjang_peminjaman_screen.dart';
 import 'screens/log_aktivitas_screen.dart';
 import 'screens/profil_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await SupabaseService.init();
   runApp(const MyApp());
 }
 
@@ -34,9 +36,9 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: DashboardScreen(),
+      home: SplashScreen(),
       theme: ThemeData(
-        dividerColor:Colors.transparent,
+        dividerColor: Colors.transparent,
         scaffoldBackgroundColor: Color(0xFFF5F7FA),
         appBarTheme: AppBarTheme(
           backgroundColor: Color(0xFF248250),
@@ -60,7 +62,7 @@ class MyApp extends StatelessWidget {
         ),
         drawerTheme: DrawerThemeData(
           scrimColor: Color(0xFF248250).withOpacity(0.5),
-        )
+        ),
       ),
       routes: {
         '/splash': (context) => const SplashScreen(),
@@ -71,12 +73,16 @@ class MyApp extends StatelessWidget {
         '/persetujuan_pengguna': (context) => const PersetujuanPenggunaScreen(),
         '/manajemen_alat': (context) => const ManajemenAlatScreen(),
         '/manajemen_kategori': (context) => const ManajemenKategoriScreen(),
-        '/manajemen_data_peminjaman': (context) => const ManajemenDataPeminjamanScreen(),
-        '/manajemen_data_pengembalian': (context) => const ManajemenDataPengembalianScreen(),
+        '/manajemen_data_peminjaman': (context) =>
+            const ManajemenDataPeminjamanScreen(),
+        '/manajemen_data_pengembalian': (context) =>
+            const ManajemenDataPengembalianScreen(),
         '/pengajuan_peminjaman': (context) => const PengajuanPeminjamanScreen(),
         '/riwayat_peminjaman': (context) => const RiwayatPeminjamanScreen(),
-        '/monitoring_peminjaman': (context) => const MonitoringPeminjamanScreen(),
-        '/monitoring_pengembalian': (context) => const MonitoringPengembalianScreen(),
+        '/monitoring_peminjaman': (context) =>
+            const MonitoringPeminjamanScreen(),
+        '/monitoring_pengembalian': (context) =>
+            const MonitoringPengembalianScreen(),
         '/tambah_alat': (context) => const TambahAlatScreen(),
         '/edit_alat': (context) => const EditAlatScreen(),
         '/tambah_kategori': (context) => TambahKategoriScreen(),
@@ -84,7 +90,7 @@ class MyApp extends StatelessWidget {
         '/cetak_kartu_peminjaman': (context) => CetakKartuPeminjamanScreen(),
         '/keranjang_peminjaman': (context) => KeranjangPeminjamanScreen(),
         '/log_aktivitas': (context) => LogAktivitasScreen(),
-        '/profil': (context) => ProfilScreen()
+        '/profil': (context) => ProfilScreen(),
       },
     );
   }

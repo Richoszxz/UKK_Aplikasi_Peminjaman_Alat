@@ -1,21 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:creaventory/export.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../widgets/card_list_widget.dart';
+import 'package:creaventory/screens/admin/edit_pengguna_screen.dart';
 
 class ManajemenPenggunaScreen extends StatefulWidget {
   const ManajemenPenggunaScreen({super.key});
 
   @override
-  State<ManajemenPenggunaScreen> createState() => _ManajemenPenggunaScreenState();
+  State<ManajemenPenggunaScreen> createState() =>
+      _ManajemenPenggunaScreenState();
 }
 
 class _ManajemenPenggunaScreenState extends State<ManajemenPenggunaScreen> {
-  List<Map<String, String>> daftarPengguna = [
-    {"nama": "Richo Ferdinand", "email": "richoferdinand@gmail.com"},
-    {"nama": "Richa Ferdinyoy", "email": "richaferdinyoy@gmail.com"},
-  ];
-
+  final PenggunaService _penggunaService = PenggunaService();
   int jumlahRequest = 2; // contoh: ada 2 request pending
 
   @override
@@ -26,60 +23,135 @@ class _ManajemenPenggunaScreenState extends State<ManajemenPenggunaScreen> {
       body: Column(
         children: [
           BarPencarianWidget(hintText: 'Cari pengguna...'),
-          ListView(
-            shrinkWrap: true,
-            children: daftarPengguna
-                .map(
-                  (pengguna) => Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 15,
-                      vertical: 7,
-                    ),
-                    child: CardListWidget(
-                      title: pengguna['nama'],
-                      subtitle: pengguna['email'],
-                    ),
-                  ),
-                )
-                .toList(),
+          Expanded(
+            child: FutureBuilder<List<ModelPengguna>>(
+              future: _penggunaService.ambilPengguna(),
+              builder: (context, asyncSnapshot) {
+                // State Loading
+                if (asyncSnapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                // State Error
+                if (asyncSnapshot.hasError) {
+                  return Center(child: Text("Error: ${asyncSnapshot.error}"));
+                }
+
+                // State Data Kosong
+                if (!asyncSnapshot.hasData || asyncSnapshot.data!.isEmpty) {
+                  return const Center(child: Text("Tidak ada data pengguna"));
+                }
+
+                final listPengguna = asyncSnapshot.data!;
+
+                return ListView.builder(
+                  itemCount: listPengguna.length,
+                  itemBuilder: (context, index) {
+                    final pengguna = listPengguna[index];
+
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 15,
+                        vertical: 7,
+                      ),
+                      child: CardListWidget(
+                        title: pengguna.userName ?? "Tanpa Nama",
+                        subtitle: pengguna.email ?? "-",
+                        diEdit: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => EditPenggunaScreen(),
+                            settings: RouteSettings(arguments: pengguna),
+                          ),
+                        ).then((_) => setState(() {})),
+                        diHapus: () {
+                          AlertHelper.showConfirm(
+                            context,
+                            judul: "Menghapus Pengguna !",
+                            pesan: "Apakah anda yakin menghapus pengguna ini ?",
+                            onConfirm: () async {
+                              try {
+                                await _penggunaService.hapusPengguna(
+                                  pengguna.idUser!,
+                                );
+
+                                AlertHelper.showSuccess(
+                                  context,
+                                  'Berhasil menghapus pengguna !',
+                                  onOk: () => Navigator.pop(context)
+                                );
+
+                                setState(() {});
+                              } catch (e) {
+                                AlertHelper.showError(
+                                  context,
+                                  'Gagal menghapus pengguna !',
+                                );
+                                debugPrint('$e');
+                              }
+                            },
+                          );
+                        },
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
           ),
         ],
       ),
-      floatingActionButton: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          FloatingActionButton(
-            onPressed: () => Navigator.of(context).pushNamed('/persetujuan_pengguna'),
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            child: const Icon(Icons.group_add_outlined),
-            shape: CircleBorder(),
-          ),
+      floatingActionButton: FutureBuilder<List<ModelPengguna>>(
+        future: _penggunaService.ambilPenggunaButuhPersetujuan(),
+        builder: (context, snapshot) {
+          int jumlah = snapshot.data?.length ?? 0;
 
-          // Badge notifikasi
-          if (jumlahRequest > 0)
-            Positioned(
-              right: -2,
-              top: -2,
-              child: Container(
-                width: 18,
-                height: 18,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.secondary,
-                  shape: BoxShape.circle,
+          return Stack(
+            clipBehavior: Clip.none,
+            children: [
+              FloatingActionButton(
+                onPressed: () async {
+                  await Navigator.of(
+                    context,
+                  ).pushNamed('/persetujuan_pengguna');
+                  setState(() {}); // Refresh data saat kembali
+                },
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                shape: const CircleBorder(),
+                child: const Icon(
+                  Icons.group_add_outlined,
+                  color: Colors.white,
                 ),
-                child: Center(
-                  child: Text(
-                    jumlahRequest.toString(),
-                    style: GoogleFonts.poppins(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.onSecondary,
+              ),
+              if (jumlah > 0)
+                Positioned(
+                  right: -2,
+                  top: -2,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.secondary,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 1.5),
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 20,
+                      minHeight: 20,
+                    ),
+                    child: Text(
+                      '$jumlah',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.onSecondary,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
                   ),
                 ),
-              ),
-            ),
-        ],
+            ],
+          );
+        },
       ),
     );
   }

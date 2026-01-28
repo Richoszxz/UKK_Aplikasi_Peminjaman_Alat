@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:creaventory/export.dart';
+import 'package:creaventory/services/auth_service.dart';
+import 'package:creaventory/services/profil_service.dart';
 
 class ProfilScreen extends StatefulWidget {
   const ProfilScreen({super.key});
@@ -19,70 +21,94 @@ class _ProfilScreenState extends State<ProfilScreen> {
     "created_at": "2024-01-20T10:00:00Z",
   };
 
+  final AuthService _authService = AuthService();
+  final ProfilService _profilService = ProfilService();
+
   @override
   Widget build(BuildContext context) {
-    // Logika Inisial dari Username
-    String username = userData['username'] ?? "User";
-    String inisial = username.substring(0, 1).toUpperCase();
-
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBarWidget(judulAppBar: "Profil"),
       drawer: const NavigationDrawerWidget(),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // --- HEADER SECTION ---
-            _buildHeader(username, userData['role'], inisial),
+      body: FutureBuilder(
+        future: _profilService.ambilInfoUser(),
+        builder: (context, asyncSnapshot) {
+          if (!asyncSnapshot.hasData) {
+            return Center(child: CircularProgressIndicator());
+          }
 
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildLabel("Data Pengguna"),
+          final data = asyncSnapshot.data!;
 
-                  // Menampilkan data sesuai kolom di tabel
-                  _buildInfoCard(
-                    "Email",
-                    userData['email'],
-                    Icons.email_outlined,
+          final String username = data['username'] ?? "User";
+          final String email = data['email'] ?? "-";
+          final String role = data['role'] ?? "peminjam";
+          final String idUser = data['id_user'] ?? "-";
+          final bool status = data['status'] ?? false;
+          final String createdAt = data['created_at'] != null 
+              ? data['created_at'].toString().split('T')[0]
+              : "-";
+          
+          // Logika Inisial
+          final String inisial = username.isNotEmpty 
+              ? username.substring(0, 1).toUpperCase() 
+              : "U";
+              
+          return SingleChildScrollView(
+            child: Column(
+              children: [
+                // --- HEADER SECTION ---
+                _buildHeader(username, role, inisial),
+          
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildLabel("Data Pengguna"),
+          
+                      // Menampilkan data sesuai kolom di tabel
+                      _buildInfoCard(
+                        "Email",
+                        email,
+                        Icons.email_outlined,
+                      ),
+                      _buildInfoCard(
+                        "User ID (UUID)",
+                        idUser,
+                        Icons.fingerprint,
+                        isSmallText: true,
+                      ),
+                      _buildInfoCard(
+                        "Status Akun",
+                        status ? "Aktif" : "Non-aktif",
+                        Icons.verified_user_outlined,
+                      ),
+                      _buildInfoCard(
+                        "Bergabung Sejak",
+                        createdAt.toString().split('T')[0],
+                        Icons.calendar_today_outlined,
+                      ),
+          
+                      const SizedBox(height: 10),
+                      _buildLabel("Keamanan"),
+          
+                      _buildMenuTile("Ubah Password", Icons.lock_outline, () {}),
+                      _buildMenuTile(
+                        "Hapus Akun",
+                        Icons.delete_outline,
+                        () {},
+                        isDestructive: true,
+                      ),
+          
+                      const SizedBox(height: 10),
+                      _buildLogoutButton(),
+                    ],
                   ),
-                  _buildInfoCard(
-                    "User ID (UUID)",
-                    userData['id_user'],
-                    Icons.fingerprint,
-                    isSmallText: true,
-                  ),
-                  _buildInfoCard(
-                    "Status Akun",
-                    userData['status'] ? "Aktif" : "Non-aktif",
-                    Icons.verified_user_outlined,
-                  ),
-                  _buildInfoCard(
-                    "Bergabung Sejak",
-                    userData['created_at'].toString().split('T')[0],
-                    Icons.calendar_today_outlined,
-                  ),
-
-                  const SizedBox(height: 10),
-                  _buildLabel("Keamanan"),
-
-                  _buildMenuTile("Ubah Password", Icons.lock_outline, () {}),
-                  _buildMenuTile(
-                    "Hapus Akun",
-                    Icons.delete_outline,
-                    () {},
-                    isDestructive: true,
-                  ),
-
-                  const SizedBox(height: 10),
-                  _buildLogoutButton(),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          );
+        }
       ),
     );
   }
@@ -150,7 +176,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
         borderRadius: BorderRadius.circular(15),
         border: BoxBorder.all(
           color: Theme.of(context).colorScheme.primary,
-          width: 1
+          width: 1,
         ),
       ),
       child: Row(
@@ -228,11 +254,21 @@ class _ProfilScreenState extends State<ProfilScreen> {
             borderRadius: BorderRadius.circular(15),
           ),
         ),
-        onPressed: () {},
+        onPressed: () async {
+          await _authService.signOut();
+
+          if (!mounted) return;
+
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            '/',
+            (route) => false,
+          );
+        },
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.logout_outlined, color: Colors.white, size: 25,),
+            Icon(Icons.logout_outlined, color: Colors.white, size: 25),
             Text(
               "Keluar Akun",
               style: GoogleFonts.poppins(

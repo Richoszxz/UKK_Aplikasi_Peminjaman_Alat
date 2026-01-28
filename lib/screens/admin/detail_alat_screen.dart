@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:creaventory/export.dart';
 
 class DetailAlatScreen extends StatefulWidget {
-  final Map<String, dynamic> alat;
+  final ModelAlat alat;
   final String heroTag;
   const DetailAlatScreen({
     super.key,
@@ -29,7 +29,7 @@ class _DetailAlatScreenState extends State<DetailAlatScreen> {
 
             // nama alat
             Text(
-              widget.alat['nama'],
+              widget.alat.namaAlat,
               style: GoogleFonts.poppins(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -39,7 +39,7 @@ class _DetailAlatScreenState extends State<DetailAlatScreen> {
 
             // kat alat
             Text(
-              widget.alat['kategori'],
+              widget.alat.namaKategori.toString(),
               style: GoogleFonts.poppins(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
@@ -51,19 +51,19 @@ class _DetailAlatScreenState extends State<DetailAlatScreen> {
 
             // ================= STOK =================
             _label("Stok Alat"),
-            _readonlyField(widget.alat['stok'].toString()),
+            _readonlyField(widget.alat.stokAlat.toString()),
 
             SizedBox(height: 15),
 
             // ================= SPESIFIKASI =================
             _label("Spesifikasi"),
-            _readonlyField(widget.alat['spesifikasi'], maxLines: 2),
+            _readonlyField(widget.alat.spesifikasiAlat.toString(), maxLines: 2),
 
             SizedBox(height: 15),
 
             // ================= DESKRIPSI =================
             _label("Deskripsi"),
-            _readonlyField(widget.alat['deskripsi'], maxLines: 2),
+            _readonlyField(widget.alat.deskripsiAlat.toString(), maxLines: 2),
           ],
         ),
       ),
@@ -71,7 +71,7 @@ class _DetailAlatScreenState extends State<DetailAlatScreen> {
   }
 
   Widget _buildImage() {
-    final String? imageUrl = widget.alat['gambar'];
+    final String? imageUrl = widget.alat.gambarUrl;
 
     // Jika belum ada gambar
     if (imageUrl == null || imageUrl.isEmpty) {

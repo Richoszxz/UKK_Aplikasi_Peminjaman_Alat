@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../widgets/card_request_peminjaman_widget.dart';
 import 'package:creaventory/export.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -10,18 +9,59 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  final List<Map<String, dynamic>> requests = [
-    {
-      "kode": "TRX24578965",
-      "nama": "Richo Ferdinand",
-      "barang": "1 Tablet iPad, 1 Stylus Pen",
-    },
-    {
-      "kode": "TRX24578966",
-      "nama": "Richa Ferdinyoy",
-      "barang": "1 Kamera DSLR",
-    },
-  ];
+  int penggunaAktif = 0;
+  int jumlahAlat = 0;
+  int alatDipinjam = 0;
+  int alatTersedia = 0;
+  bool isLoading = true;
+
+  Future<void> loadDashboard() async {
+    try {
+      final client = SupabaseService.client;
+
+      /// 1️⃣ Pengguna aktif
+      final pengguna = await client
+          .from('pengguna')
+          .select('id_user')
+          .eq('status', true);
+
+      /// 2️⃣ Total alat + total stok
+      final alat = await client.from('alat').select('id_alat, stok_alat');
+
+      int totalStok = 0;
+      for (final item in alat) {
+        totalStok += (item['stok_alat'] as int);
+      }
+
+      /// 3️⃣ Alat sedang dipinjam
+      final dipinjam = await client
+          .from('detail_peminjaman')
+          .select('jumlah_peminjaman, peminjaman!inner(status_peminjaman)')
+          .inFilter('peminjaman.status_peminjaman', ['menunggu', 'dipinjam']);
+
+      int totalDipinjam = 0;
+      for (final item in dipinjam) {
+        totalDipinjam += (item['jumlah_peminjaman'] as int);
+      }
+
+      setState(() {
+        penggunaAktif = pengguna.length;
+        jumlahAlat = alat.length;
+        alatDipinjam = totalDipinjam;
+        alatTersedia = totalStok - totalDipinjam;
+        isLoading = false;
+      });
+    } catch (e) {
+      debugPrint("Gagal load dashboard: $e");
+      isLoading = false;
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    loadDashboard();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,19 +78,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
               buildDashboardCard(
                 context,
                 "Pengguna Aktif",
-                "10",
+                isLoading ? "-" : penggunaAktif.toString(),
                 Theme.of(context).colorScheme.secondary,
               ),
               buildDashboardCard(
                 context,
                 "Jumlah Alat",
-                "10",
+                isLoading ? "-" : jumlahAlat.toString(),
                 Theme.of(context).colorScheme.secondary,
               ),
             ],
           ),
-
-          const SizedBox(height: 10),
 
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -58,13 +96,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
               buildDashboardCard(
                 context,
                 "Alat Dipinjam",
-                "10",
+                isLoading ? "-" : alatDipinjam.toString(),
                 Theme.of(context).colorScheme.secondary,
               ),
               buildDashboardCard(
                 context,
                 "Alat Tersedia",
-                "10",
+                isLoading ? "-" : alatTersedia.toString(),
                 Theme.of(context).colorScheme.secondary,
               ),
             ],
@@ -183,32 +221,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             ),
           ),
-
-          const SizedBox(height: 15),
-
-          // ===================== PEMINJAMAN TERBARU =====================
-          Text(
-            "Peminjaman Terbaru:",
-            style: GoogleFonts.poppins(
-              fontSize: 18,
-              fontWeight: FontWeight.w500,
-              color: Color(0xFF424242),
-            ),
-          ),
-
-          const SizedBox(height: 10),
-
-          ...requests.map((request) {
-            return CardRequestPeminjamanWidget(
-              kodePeminjaman: request['kode'],
-              namaPeminjam: request['nama'],
-              daftarBarang: request['barang'],
-              disetujui: () {},
-              ditolak: () {},
-            );
-          }).toList(),
-
-          const SizedBox(height: 30),
         ],
       ),
     );
@@ -222,8 +234,9 @@ Widget buildDashboardCard(
   Color color,
 ) {
   return Container(
-    height: 150,
-    width: 175,
+    margin: EdgeInsets.all(5),
+    height: MediaQuery.of(context).size.height * 0.20,
+    width: MediaQuery.of(context).size.width * 0.43,
     decoration: BoxDecoration(
       color: color,
       borderRadius: BorderRadius.circular(20),

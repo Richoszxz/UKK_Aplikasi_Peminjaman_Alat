@@ -15,10 +15,17 @@ class _TambahKategoriScreenState extends State<TambahKategoriScreen> {
   final TextEditingController deskripsiKategoriController =
       TextEditingController();
 
-  void simpanData() {
+  void simpanData() async {
     if (_formKey.currentState!.validate()) {
-      debugPrint("Nama: ${namaKategoriController.text}");
-      debugPrint("Deskripsi: ${deskripsiKategoriController.text}");
+      try {
+        await KategoriService().tambahKategori(
+          namaKategoriController.text,
+          deskripsiKategoriController.text,
+        );
+        if (mounted) Navigator.pop(context);
+      } catch (e) {
+        AlertHelper.showError(context, 'Gagak menambah kategori');
+      }
     }
   }
 

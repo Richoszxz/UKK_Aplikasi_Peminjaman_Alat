@@ -11,13 +11,8 @@ class ManajemenKategoriScreen extends StatefulWidget {
 }
 
 class _ManajemenKategoriScreenState extends State<ManajemenKategoriScreen> {
-  List<Map<String, String>> daftarKategori = [
-    {"nama": "Elektronik", "deskripsi": "Perangkat elektronik dan gadget."},
-    {"nama": "Fotografi", "deskripsi": "Alat dan perangkat fotografi."},
-    {"nama": "Presentasi", "deskripsi": "Perangkat presentasi."},
-    {"nama": "Audio", "deskripsi": "Perangkat audio dan alat musik."},
-    {"nama": "Komputer", "deskripsi": "Komponen dan perangkat komputer."},
-  ];
+  final KategoriService _kategoriService = KategoriService();
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -30,21 +25,54 @@ class _ManajemenKategoriScreenState extends State<ManajemenKategoriScreen> {
           Expanded(
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: 15),
-              child: ListView(
-                children: daftarKategori
-                    .map(
-                      (kategori) => Padding(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 7,
-                        ),
+              child: FutureBuilder(
+                future: _kategoriService.ambilKategori(),
+                builder: (context, asyncSnapshot) {
+                  // State Loading
+                  if (asyncSnapshot.connectionState ==
+                      ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  // State Error
+                  if (asyncSnapshot.hasError) {
+                    return Center(child: Text("Error: ${asyncSnapshot.error}"));
+                  }
+
+                  // State Data Kosong
+                  if (!asyncSnapshot.hasData || asyncSnapshot.data!.isEmpty) {
+                    return const Center(child: Text("Tidak ada data pengguna"));
+                  }
+
+                  final data = asyncSnapshot.data!;
+
+                  return ListView.builder(
+                    itemCount: data.length,
+                    itemBuilder: (context, index) {
+                      final listKategori = data[index];
+
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 5),
                         child: CardListWidget(
-                          title: kategori['nama'],
-                          subtitle: kategori['deskripsi'],
-                          diEdit: () => Navigator.of(context).pushNamed('/edit_kategori'),
+                          title: listKategori.namaKategori,
+                          subtitle:
+                              listKategori.deskripsiKategori ??
+                              'Tidak ada deskripsi kategori',
+                          diEdit: () => Navigator.of(context).pushNamed(
+                            '/edit_kategori',
+                            arguments: listKategori,
+                          ),
+                          diHapus: () async {
+                            await _kategoriService.hapusKategori(
+                              listKategori.idKategori!,
+                            );
+                            setState(() {});
+                          },
                         ),
-                      ),
-                    )
-                    .toList(),
+                      );
+                    },
+                  );
+                },
               ),
             ),
           ),

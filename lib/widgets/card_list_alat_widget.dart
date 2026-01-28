@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 class CardListAlatWidget extends StatefulWidget {
   final String namaAlat;
   final String spesifikasiAlat;
+  final String? gambarUrl;
   final List<Widget> tombolAksi;
   final String? heroTag;
   final VoidCallback? onTap;
@@ -13,6 +14,7 @@ class CardListAlatWidget extends StatefulWidget {
     required this.tombolAksi,
     required this.namaAlat,
     required this.spesifikasiAlat,
+    this.gambarUrl,
     this.heroTag,
     this.onTap,
   });
@@ -55,6 +57,43 @@ class _CardListAlatWidgetState extends State<CardListAlatWidget> {
               decoration: const BoxDecoration(
                 color: Color(0xFF248250),
                 borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(20),
+                ),
+                child: (widget.gambarUrl == null || widget.gambarUrl!.isEmpty)
+                    ? Container(
+                        height: 140,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF248250),
+                          borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(20),
+                          ),
+                        ),
+                      )
+                    : Image.network(
+                        widget.gambarUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          // Jika URL salah/error, tampilkan icon agar tidak kosong melompong
+                          return const Center(
+                            child: Icon(
+                              Icons.broken_image,
+                              color: Colors.white,
+                              size: 40,
+                            ),
+                          );
+                        },
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return const Center(
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                            ),
+                          );
+                        },
+                      ),
               ),
             ),
 

@@ -10,31 +10,33 @@ class EditKategoriScreen extends StatefulWidget {
 
 class _EditKategoriScreenState extends State<EditKategoriScreen> {
   final _formKey = GlobalKey<FormState>();
-
+  late ModelKategori kategori; // Simpan data dari argumen
+  
   final TextEditingController namaKategoriController = TextEditingController();
-  final TextEditingController deskripsiKategoriController =
-      TextEditingController();
-
-  /// ================= DUMMY DATA =================
-  final Map<String, String> dummyKategori = {
-    "nama": "Elektronik",
-    "deskripsi": "Kategori alat elektronik seperti laptop, kamera, proyektor",
-  };
+  final TextEditingController deskripsiKategoriController = TextEditingController();
 
   @override
-  void initState() {
-    super.initState();
-
-    /// isi field dari dummy
-    namaKategoriController.text = dummyKategori["nama"]!;
-    deskripsiKategoriController.text = dummyKategori["deskripsi"]!;
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Ambil data yang dikirim dari screen sebelumnya
+    kategori = ModalRoute.of(context)!.settings.arguments as ModelKategori;
+    namaKategoriController.text = kategori.namaKategori;
+    deskripsiKategoriController.text = kategori.deskripsiKategori ?? "";
   }
 
-  void simpanPerubahan() {
+  void simpanPerubahan() async {
     if (_formKey.currentState!.validate()) {
-      debugPrint("=== UPDATE KATEGORI ===");
-      debugPrint("Nama: ${namaKategoriController.text}");
-      debugPrint("Deskripsi: ${deskripsiKategoriController.text}");
+      try {
+        await KategoriService().editKategori(
+          kategori.idKategori!,
+          namaKategoriController.text,
+          deskripsiKategoriController.text,
+        );
+        if (mounted) Navigator.pop(context);
+        AlertHelper.showSuccess(context, 'Berhasil menyimpan perubahan');
+      } catch (e) {
+        AlertHelper.showError(context, 'Gagal menyimpan perubahan');
+      }
     }
   }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:creaventory/export.dart';
+import 'package:creaventory/services/auth_service.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -10,25 +11,53 @@ class SignupScreen extends StatefulWidget {
 
 class _SignupScreenState extends State<SignupScreen> {
   final _formKey = GlobalKey<FormState>();
+  final AuthService _authService = AuthService();
 
   final TextEditingController usernameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
-  void handleSignUp() {
+  // State tambahan untuk UI
+  bool _isLoading = false;
+  bool _isObscured = true;
+
+  @override
+  void dispose() {
+    // Membersihkan controller saat widget dihapus dari memori
+    emailController.dispose();
+    passwordController.dispose();
+    usernameController.dispose();
+    super.dispose();
+  }
+
+  void handleSignUp() async {
     if (_formKey.currentState!.validate()) {
-      final username = usernameController.text;
-      final email = emailController.text;
-      final password = passwordController.text;
+      setState(() => _isLoading = true);
 
-      // TODO: Integrasi Auth
-      debugPrint("Username: $username");
-      debugPrint("Email: $email");
-      debugPrint("Password: $password");
+      try {
+        final response = await _authService.signUp(
+          emailController.text,
+          passwordController.text,
+          usernameController.text,
+        );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Registrasi berhasil (dummy)")),
-      );
+        if (response.user != null) {
+          if (!mounted) return;
+          
+           // Kembali ke halaman Login
+
+          AlertHelper.showSuccess(
+            context,
+            "Registrasi Berhasil! Silahkan tunggu aktivasi akun oleh admin.",
+            onOk: () => Navigator.pushNamed(context, '/login'),
+          );
+        }
+      } catch (e) {
+        if (!mounted) return;
+        AlertHelper.showError(context, "Terjadi kesalahan: ${e.toString()}");
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -39,8 +68,8 @@ class _SignupScreenState extends State<SignupScreen> {
         children: [
           Positioned.fill(
             child: Image.asset(
-              'assets/images/bg_login_mobile.png',
-              fit: BoxFit.fitHeight,
+              'assets/images/bg_login_page.png',
+              fit: BoxFit.cover,
             ),
           ),
 
@@ -131,14 +160,26 @@ class _SignupScreenState extends State<SignupScreen> {
                             ),
                             TextFormField(
                               controller: usernameController,
+                              style: GoogleFonts.poppins(
+                                color: Color(0xFF424242),
+                              ),
                               decoration: InputDecoration(
                                 hintText: "masukkan username",
                                 hintStyle: GoogleFonts.poppins(
                                   color: const Color(0xFFD1D1D1),
                                 ),
                                 border: const OutlineInputBorder(
-                                  borderRadius:
-                                      BorderRadius.all(Radius.circular(10)),
+                                  borderRadius: BorderRadius.all(
+                                    Radius.circular(10),
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: BorderSide(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                  ),
                                 ),
                               ),
                               validator: (value) {
@@ -161,14 +202,26 @@ class _SignupScreenState extends State<SignupScreen> {
                             ),
                             TextFormField(
                               controller: emailController,
+                              style: GoogleFonts.poppins(
+                                color: Color(0xFF424242),
+                              ),
                               decoration: InputDecoration(
                                 hintText: "email@example.com",
                                 hintStyle: GoogleFonts.poppins(
                                   color: const Color(0xFFD1D1D1),
                                 ),
                                 border: const OutlineInputBorder(
-                                  borderRadius:
-                                      BorderRadius.all(Radius.circular(10)),
+                                  borderRadius: BorderRadius.all(
+                                    Radius.circular(10),
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: BorderSide(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                  ),
                                 ),
                               ),
                               validator: (value) {
@@ -191,19 +244,38 @@ class _SignupScreenState extends State<SignupScreen> {
                             ),
                             TextFormField(
                               controller: passwordController,
-                              obscureText: true,
+                              obscureText: _isObscured,
+                              style: GoogleFonts.poppins(
+                                color: Color(0xFF424242),
+                              ),
                               decoration: InputDecoration(
-                                labelText: "masukkan password",
-                                labelStyle: GoogleFonts.poppins(
+                                hintText: "masukkan password",
+                                hintStyle: GoogleFonts.poppins(
                                   color: const Color(0xFFD1D1D1),
                                 ),
-                                suffixIcon: const Icon(
-                                  Icons.visibility,
+                                suffixIcon: IconButton(
+                                  onPressed: () => setState(() {
+                                    _isObscured = !_isObscured;
+                                  }),
+                                  icon: Icon(
+                                    _isObscured
+                                        ? Icons.visibility
+                                        : Icons.visibility_off,
+                                  ),
                                   color: Color(0xFF073D1C),
                                 ),
                                 border: const OutlineInputBorder(
-                                  borderRadius:
-                                      BorderRadius.all(Radius.circular(10)),
+                                  borderRadius: BorderRadius.all(
+                                    Radius.circular(10),
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: BorderSide(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                  ),
                                 ),
                               ),
                               validator: (value) {
@@ -233,7 +305,7 @@ class _SignupScreenState extends State<SignupScreen> {
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: ElevatedButton(
-                                  onPressed: handleSignUp,
+                                  onPressed: _isLoading ? null : handleSignUp,
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.transparent,
                                     shadowColor: Colors.transparent,
@@ -241,13 +313,22 @@ class _SignupScreenState extends State<SignupScreen> {
                                       borderRadius: BorderRadius.circular(10),
                                     ),
                                   ),
-                                  child: Text(
-                                    "Sign Up",
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 18,
-                                      color: Colors.white,
-                                    ),
-                                  ),
+                                  child: _isLoading
+                                      ? const SizedBox(
+                                          height: 20,
+                                          width: 20,
+                                          child: CircularProgressIndicator(
+                                            color: Colors.white,
+                                            strokeWidth: 2,
+                                          ),
+                                        )
+                                      : Text(
+                                          "Sign Up",
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 18,
+                                            color: Colors.white,
+                                          ),
+                                        ),
                                 ),
                               ),
                             ),

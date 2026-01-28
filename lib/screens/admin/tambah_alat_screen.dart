@@ -4,6 +4,9 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:creaventory/export.dart';
 
+import 'dart:typed_data'; // Tambahkan import ini
+import 'package:flutter/foundation.dart' show kIsWeb; // Untuk cek platform
+
 class TambahAlatScreen extends StatefulWidget {
   const TambahAlatScreen({super.key});
 
@@ -13,48 +16,116 @@ class TambahAlatScreen extends StatefulWidget {
 
 class _TambahAlatScreenState extends State<TambahAlatScreen> {
   final _formKey = GlobalKey<FormState>();
+  final AlatService _alatService = AlatService();
+  final KategoriService _kategoriService = KategoriService();
 
   final TextEditingController namaAlatController = TextEditingController();
   final TextEditingController stokAlatController = TextEditingController();
   final TextEditingController spesifikasiAlatController =
       TextEditingController();
 
-  String? kategoriAlatTerpilih;
+  bool _isSaving = false; // Tambahkan ini
+
+  // Ubah kategori menjadi int karena database menyimpan id_kategori
+  int? kategoriAlatIdTerpilih;
   String? kondisiAlatTerpilih;
   File? gambar;
+  Uint8List? webImage; // Tambahkan ini untuk Web preview
 
-  final List<String> kategoriList = [
-    "Elektronik",
-    "Alat Tulis",
-    "Multimedia",
-    "Lainnya",
-  ];
+  // List untuk menampung data kategori dari database
+  List<ModelKategori> listKategoriDatabase = [];
+  final List<String> kondisiList = ["baik", "rusak", "pemeliharaan"];
 
-  final List<String> kondisiList = ["Baik", "Rusak Ringan", "Rusak Berat"];
+  @override
+  void initState() {
+    super.initState();
+    _loadKategori(); // Ambil kategori saat halaman dibuka
+  }
+
+  Future<void> _loadKategori() async {
+    try {
+      final data = await _kategoriService.ambilKategori();
+      setState(() {
+        listKategoriDatabase = data;
+      });
+    } catch (e) {
+      debugPrint("Gagal load kategori: $e");
+    }
+  }
 
   /// ================= PICK FILE =================
   Future<void> pilihGambar() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.image,
       allowMultiple: false,
+      withData: true,
     );
 
     if (result != null && result.files.single.path != null) {
       setState(() {
-        gambar = File(result.files.single.path!);
+        if (kIsWeb) {
+          webImage = result.files.single.bytes;
+        } else {
+          gambar = File(result.files.single.path!);
+        }
       });
     }
   }
 
-  void simpanData() {
+  Future<void> simpanData() async {
     if (_formKey.currentState!.validate()) {
-      debugPrint("Nama: ${namaAlatController.text}");
-      debugPrint("Stok: ${stokAlatController.text}");
-      debugPrint("Spesifikasi: ${spesifikasiAlatController.text}");
-      debugPrint("Kategori: $kategoriAlatTerpilih");
-      debugPrint("Kondisi: $kondisiAlatTerpilih");
-      debugPrint("Gambar: ${gambar?.path}");
+      setState(() => _isSaving = true); // Mulai loading pada tombol
+
+      try {
+        String? finalImageUrl;
+        // 1. Logika Upload Gambar Hybrid
+        if (kIsWeb && webImage != null) {
+          // Jika di Web, kirim bytes
+          finalImageUrl = await _alatService.uploadGambar(
+            bytes: webImage,
+            fileName: 'upload_web.jpg',
+          );
+        } else if (gambar != null) {
+          // Jika di Mobile, kirim file
+          finalImageUrl = await _alatService.uploadGambar(
+            file: gambar,
+            fileName: gambar!.path.split('/').last,
+          );
+        }
+
+        // 2. Siapkan Data untuk Database
+        final Map<String, dynamic> dataBaru = {
+          'nama_alat': namaAlatController.text,
+          'id_kategori': kategoriAlatIdTerpilih, // Mengirim ID (int)
+          'stok_alat': int.parse(stokAlatController.text),
+          'kondisi_alat': kondisiAlatTerpilih,
+          'spesifikasi_alat': spesifikasiAlatController.text,
+          'gambar_url': finalImageUrl,
+        };
+
+        // 3. Panggil Service
+        await _alatService.tambahAlat(dataBaru);
+
+        AlertHelper.showSuccess(
+          context,
+          "Berhasil menambah alat!",
+          onOk: () => Navigator.pushNamed(context, '/manajemen_alat'),
+        );
+      } catch (e) {
+        AlertHelper.showError(context, 'Gagal menambahkan alat!');
+      } finally {
+        if (mounted) setState(() => _isSaving = false);
+      }
     }
+  }
+
+  @override
+  void dispose() {
+    // TODO: implement dispose
+    namaAlatController.dispose();
+    stokAlatController.dispose();
+    spesifikasiAlatController.dispose();
+    super.dispose();
   }
 
   @override
@@ -81,13 +152,43 @@ class _TambahAlatScreenState extends State<TambahAlatScreen> {
 
               /// ================= KATEGORI =================
               _label("Kategori alat"),
-              _dropdown(
-                value: kategoriAlatTerpilih,
-                hint: "Pilih kategori",
-                items: kategoriList,
+              DropdownButtonFormField<int>(
+                // Menggunakan int untuk ID
+                value: kategoriAlatIdTerpilih,
+                hint: Text("Pilih kategori", style: GoogleFonts.poppins()),
+                items: listKategoriDatabase.map((kat) {
+                  return DropdownMenuItem<int>(
+                    value: kat.idKategori, // Value adalah ID
+                    child: Text(kat.namaKategori), // Label adalah Nama
+                  );
+                }).toList(),
                 onChanged: (value) {
-                  setState(() => kategoriAlatTerpilih = value);
+                  setState(() => kategoriAlatIdTerpilih = value);
                 },
+                validator: (value) =>
+                    value == null ? "Wajib pilih kategori" : null,
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: Theme.of(context).colorScheme.secondary,
+                  contentPadding: EdgeInsets.symmetric(
+                    vertical: 20,
+                    horizontal: 10,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.primary,
+                      width: 1,
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.primary,
+                      width: 1,
+                    ),
+                  ),
+                ),
               ),
 
               const SizedBox(height: 14),
@@ -138,20 +239,29 @@ class _TambahAlatScreenState extends State<TambahAlatScreen> {
                 height: 50,
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.primary,
-                  borderRadius: BorderRadius.circular(15)
+                  borderRadius: BorderRadius.circular(15),
                 ),
                 child: ElevatedButton(
-                  onPressed: simpanData,
+                  onPressed: _isSaving ? null : simpanData,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Theme.of(context).colorScheme.primary,
                   ),
-                  child: Text(
-                    "Simpan",
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      color: Theme.of(context).colorScheme.onPrimary,
-                    ),
-                  ),
+                  child: _isSaving
+                      ? SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : Text(
+                          "Simpan",
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            color: Theme.of(context).colorScheme.onPrimary,
+                          ),
+                        ),
                 ),
               ),
             ],
@@ -283,11 +393,16 @@ class _TambahAlatScreenState extends State<TambahAlatScreen> {
                 borderRadius: BorderRadius.circular(10),
                 color: Colors.grey.shade300,
               ),
-              child: gambar == null
+              child: (kIsWeb ? webImage == null : gambar == null)
                   ? const Icon(Icons.image_outlined)
                   : ClipRRect(
                       borderRadius: BorderRadius.circular(10),
-                      child: Image.file(gambar!, fit: BoxFit.cover),
+                      child: kIsWeb
+                          ? Image.memory(
+                              webImage!,
+                              fit: BoxFit.cover,
+                            ) // Gunakan Memory untuk Web
+                          : Image.file(gambar!, fit: BoxFit.cover),
                     ),
             ),
 
@@ -296,9 +411,13 @@ class _TambahAlatScreenState extends State<TambahAlatScreen> {
             /// Nama file
             Expanded(
               child: Text(
-                gambar == null
-                    ? "Upload foto alat"
-                    : gambar!.path.split('/').last,
+                kIsWeb
+                    ? (webImage == null
+                          ? "Upload foto alat"
+                          : "Gambar terpilih (Web)")
+                    : (gambar == null
+                          ? "Upload foto alat"
+                          : gambar!.path.split('/').last),
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.poppins(fontSize: 13),
               ),
