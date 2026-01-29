@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:creaventory/export.dart';
 
 class EditDataPeminjamanScreen extends StatefulWidget {
-  final Map<String, dynamic> data; // Menerima data lama
+  final ModelPeminjaman data; // Menerima data lama
 
   const EditDataPeminjamanScreen({super.key, required this.data});
 
@@ -12,36 +12,63 @@ class EditDataPeminjamanScreen extends StatefulWidget {
 }
 
 class _EditDataPeminjamanScreenState extends State<EditDataPeminjamanScreen> {
-  final List<String> listSiswa = [
-    "Richo Ferdinand",
-    "Richa Ferdinyoy",
-    "Gema AI",
-  ];
-  final List<String> listAlatInventaris = [
-    "iPad M3 Pro",
-    "Stylus Pen",
-    "MacBook Air",
-    "Kamera DSLR",
-  ];
-
-  String? selectedMahasiswa;
+  String? peminjamTerpilih;
   DateTime? tglPinjam;
   DateTime? tglRencanaKembali;
   List<Map<String, dynamic>> barisAlat = [];
 
+  final PenggunaService _penggunaService = PenggunaService();
+  List<ModelPengguna> listPengguna = [];
+
+  final AlatService _alatService = AlatService();
+  List<ModelAlat> listAlat = [];
+
+  Future<void> loadPengguna() async {
+    try {
+      final result = await _penggunaService.ambilPengguna();
+      setState(() {
+        listPengguna = result;
+      });
+    } catch (e) {
+      debugPrint("Gagal load pengguna: $e");
+    }
+  }
+
+  Future<void> loadAlat() async {
+    try {
+      final result = await _alatService.ambilAlat();
+      setState(() {
+        listAlat = result;
+      });
+    } catch (e) {
+      debugPrint("Gagal load alat: $e");
+    }
+  }
+
   @override
   void initState() {
     super.initState();
-    // Mengisi data awal dari widget.data
-    selectedMahasiswa = widget.data['nama'];
-    // Jika tglPinjam berupa String "dd/mm/yyyy", perlu di-parse.
-    // Di sini kita asumsikan data dummy sudah sesuai format.
-    barisAlat = List<Map<String, dynamic>>.from(
-      widget.data['alat'] ??
-          [
-            {"nama": null, "qty": 1},
-          ],
-    );
+
+    peminjamTerpilih = widget.data.namaUser;
+    tglPinjam = widget.data.tanggalPeminjaman;
+    tglRencanaKembali = widget.data.tanggalKembaliRencana;
+
+    loadPengguna();
+    loadAlat();
+
+    // ✅ Ambil data alat lama
+    if (widget.data.detailPeminjaman.isNotEmpty) {
+      barisAlat = widget.data.detailPeminjaman
+          .map<Map<String, dynamic>>(
+            (e) => {"nama": e.namaAlat, "qty": e.jumlahPeminjaman},
+          )
+          .toList();
+    } else {
+      // fallback jika belum ada detail alat
+      barisAlat = [
+        {"nama": null, "qty": 1},
+      ];
+    }
   }
 
   @override
@@ -139,6 +166,10 @@ class _EditDataPeminjamanScreenState extends State<EditDataPeminjamanScreen> {
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       value: barisAlat[index]['nama'],
+                      style: GoogleFonts.poppins(
+                        color: Theme.of(context).colorScheme.onSecondary,
+                        fontSize: 15
+                      ),
                       hint: Text(
                         "Pilih alat",
                         style: GoogleFonts.poppins(
@@ -147,11 +178,12 @@ class _EditDataPeminjamanScreenState extends State<EditDataPeminjamanScreen> {
                         ),
                       ),
                       isExpanded: true,
-                      items: listAlatInventaris
-                          .map(
-                            (e) => DropdownMenuItem(value: e, child: Text(e)),
-                          )
-                          .toList(),
+                      items: listAlat.map((alat) {
+                        return DropdownMenuItem<String>(
+                          value: alat.namaAlat,
+                          child: Text(alat.namaAlat),
+                        );
+                      }).toList(),
                       onChanged: (v) {
                         setState(() => barisAlat[index]['nama'] = v);
                       },
@@ -250,7 +282,11 @@ class _EditDataPeminjamanScreenState extends State<EditDataPeminjamanScreen> {
       decoration: _fieldDecoration(),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
-          value: selectedMahasiswa,
+          value: peminjamTerpilih,
+          style: GoogleFonts.poppins(
+            color: Theme.of(context).colorScheme.onSecondary,
+            fontSize: 15
+          ),
           hint: Text(
             "Pilih Siswa",
             style: GoogleFonts.poppins(
@@ -258,10 +294,13 @@ class _EditDataPeminjamanScreenState extends State<EditDataPeminjamanScreen> {
             ),
           ),
           isExpanded: true,
-          items: listSiswa
-              .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-              .toList(),
-          onChanged: (v) => setState(() => selectedMahasiswa = v),
+          items: listPengguna.map((item) {
+            return DropdownMenuItem<String>(
+              value: item.userName, // sesuaikan field modelmu
+              child: Text(item.userName ?? '-'),
+            );
+          }).toList(),
+          onChanged: (v) => setState(() => peminjamTerpilih = v),
         ),
       ),
     );

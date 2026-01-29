@@ -15,3 +15,8 @@ export 'models/model_alat.dart';
 export 'services/alat_service.dart';
 export 'models/model_log.dart';
 export 'services/log_service.dart';
+export 'models/model_peminjaman.dart';
+export 'services/peminjaman_service.dart';
+export 'models/model_detail_peminjaman.dart';
+export 'models/model_pengembalian.dart';
+export 'services/pengembalian_service.dart';
