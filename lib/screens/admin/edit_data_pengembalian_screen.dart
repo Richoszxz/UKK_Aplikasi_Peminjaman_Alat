@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:creaventory/export.dart';
 
 class EditDataPengembalianScreen extends StatefulWidget {
-  final Map<String, dynamic> data;
+  final ModelPengembalian data;
 
   const EditDataPengembalianScreen({super.key, required this.data});
 
@@ -15,18 +15,17 @@ class _EditDataPengembalianScreenState
     extends State<EditDataPengembalianScreen> {
   String? selectedKode;
   DateTime? tglKembali;
-  List<Map<String, dynamic>> daftarAlat = [];
+  List<ModelDetailPeminjaman> daftarAlat = [];
   Map<String, String> kondisiAlat = {};
 
   @override
   void initState() {
     super.initState();
-    selectedKode = widget.data['kode'];
-    daftarAlat = List<Map<String, dynamic>>.from(widget.data['alat'] ?? []);
+    selectedKode = widget.data.peminjaman.first.kodePeminjaman;
+    daftarAlat = widget.data.peminjaman.first.detailPeminjaman;
 
-    // Inisialisasi kondisi alat dari data yang ada
     for (var item in daftarAlat) {
-      kondisiAlat[item['nama']] = item['kondisi'] ?? "Baik";
+      kondisiAlat[item.namaAlat] = item.kondisiKembali ?? "Baik";
     }
   }
 
@@ -47,15 +46,13 @@ class _EditDataPengembalianScreenState
             const SizedBox(height: 20),
             _tanggalField(
               label: "Tanggal pengembalian:",
-              selectedDate: tglKembali,
+              selectedDate: widget.data.tanggalKembaliAsli,
               onTap: () => _selectDate(context),
             ),
             const SizedBox(height: 20),
             _buildLabel("Daftar alat:"),
             Column(
-              children: daftarAlat.map((item) {
-                return _buildItemCard(item['nama'], item['qty'].toString());
-              }).toList(),
+              children: daftarAlat.map(_buildItemCard).toList(),
             ),
             const SizedBox(height: 20),
             _buildLabel("Ringkasan Denda:"),
@@ -130,14 +127,16 @@ class _EditDataPengembalianScreenState
           value: selectedKode,
           hint: Text(
             "Pilih Kode Peminjaman",
-            style: GoogleFonts.poppins(color: Colors.grey, fontSize: 14),
+            style: GoogleFonts.poppins(
+              color: Theme.of(context).colorScheme.onSecondary,
+              fontSize: 14,
+            ),
           ),
           isExpanded: true,
           items: [
-            "TRX24578965",
-            "TRX45672905",
-          ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-          onChanged: (v) => setState(() => selectedKode = v),
+            DropdownMenuItem(value: selectedKode, child: Text('$selectedKode')),
+          ],
+          onChanged: null,
         ),
       ),
     );
@@ -195,7 +194,7 @@ class _EditDataPengembalianScreenState
     );
   }
 
-  Widget _buildDropdownKondisi(String namaAlat) {
+  Widget _buildDropdownKondisi(ModelDetailPeminjaman item) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8),
       height: 25,
@@ -205,14 +204,14 @@ class _EditDataPengembalianScreenState
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
-          value: kondisiAlat[namaAlat],
+          value: item.kondisiKembali ?? item.kondisiAlat,
           dropdownColor: Theme.of(context).colorScheme.primary,
           icon: const Icon(
             Icons.keyboard_arrow_down,
             color: Colors.white,
             size: 16,
           ),
-          items: ["Baik", "Rusak"]
+          items: ["baik", "rusak"]
               .map(
                 (val) => DropdownMenuItem(
                   value: val,
@@ -223,14 +222,17 @@ class _EditDataPengembalianScreenState
                 ),
               )
               .toList(),
-          onChanged: (newVal) =>
-              setState(() => kondisiAlat[namaAlat] = newVal!),
+          onChanged: (newVal) {
+            setState(() {
+              item.kondisiKembali = newVal;
+            });
+          },
         ),
       ),
     );
   }
 
-  Widget _buildItemCard(String namaAlat, String qty) {
+  Widget _buildItemCard(ModelDetailPeminjaman item) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
@@ -262,7 +264,7 @@ class _EditDataPengembalianScreenState
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "$namaAlat (x$qty)",
+                  "${item.namaAlat} (x${item.jumlahPeminjaman})",
                   style: GoogleFonts.poppins(
                     fontWeight: FontWeight.bold,
                     color: Theme.of(context).colorScheme.primary,
@@ -277,7 +279,7 @@ class _EditDataPengembalianScreenState
                       style: GoogleFonts.poppins(fontSize: 12),
                     ),
                     const SizedBox(width: 5),
-                    _buildDropdownKondisi(namaAlat),
+                    _buildDropdownKondisi(item),
                   ],
                 ),
               ],

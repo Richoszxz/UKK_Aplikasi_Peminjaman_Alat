@@ -1,5 +1,4 @@
 import 'model_peminjaman.dart';
-import 'model_detail_peminjaman.dart';
 
 class ModelPengembalian {
   final int idPengembalian;
@@ -11,7 +10,6 @@ class ModelPengembalian {
   final String? dikonfirmasiOleh;
 
   final List<ModelPeminjaman> peminjaman;
-  final List<ModelDetailPeminjaman> detailPeminjaman;
 
   ModelPengembalian({
     required this.idPengembalian,
@@ -22,10 +20,10 @@ class ModelPengembalian {
     this.dendaTerlambat,
     this.dikonfirmasiOleh,
     this.peminjaman = const [],
-    this.detailPeminjaman = const [],
   });
 
   factory ModelPengembalian.fromJson(Map<String, dynamic> map) {
+    final peminjaman = map['peminjaman'];
     return ModelPengembalian(
       idPengembalian: map['id_pengembalian'],
       idPeminjaman: map['id_peminjaman'],
@@ -38,27 +36,9 @@ class ModelPengembalian {
           ? double.parse(map['denda_terlambat'].toString())
           : null,
       dikonfirmasiOleh: map['dikonfirmasi_oleh'],
-      peminjaman: map['peminjaman'] != null
-          ? (map['peminjaman'] as List)
-                .map((item) => ModelPeminjaman.fromJson(item))
-                .toList()
-          : [],
-      detailPeminjaman: map['detail_peminjaman'] != null
-          ? (map['detail_peminjaman'] as List)
-                .map((item) => ModelDetailPeminjaman.fromJson(item))
-                .toList()
+      peminjaman: peminjaman != null
+          ? [ModelPeminjaman.fromJson(peminjaman)]
           : [],
     );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id_peminjaman': idPeminjaman,
-      'tanggal_kembali_asli': tanggalKembaliAsli.toIso8601String(),
-      'terlambat_hari': terlambatHari,
-      'total_denda': totalDenda,
-      'denda_terlambat': dendaTerlambat,
-      'dikonfirmasi_oleh': dikonfirmasiOleh,
-    };
   }
 }

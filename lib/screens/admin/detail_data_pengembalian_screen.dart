@@ -3,7 +3,7 @@ import 'package:creaventory/export.dart';
 
 class DetailPengembalianScreen extends StatefulWidget {
   // Menerima data dari halaman Manajemen Pengembalian
-  final Map<String, dynamic> data;
+  final ModelPengembalian data;
 
   const DetailPengembalianScreen({super.key, required this.data});
 
@@ -13,10 +13,15 @@ class DetailPengembalianScreen extends StatefulWidget {
 }
 
 class _DetailPengembalianScreenState extends State<DetailPengembalianScreen> {
+
+  String formatTanggal(DateTime date) {
+    return "${date.day}/${date.month}/${date.year}";
+  }
+
   @override
   Widget build(BuildContext context) {
     // Logika untuk mengambil inisial nama
-    String nama = widget.data['nama'] ?? "User";
+    String nama = widget.data.peminjaman.first.namaUser ?? "User";
     String inisial = nama
         .split(' ')
         .map((e) => e[0])
@@ -58,14 +63,14 @@ class _DetailPengembalianScreenState extends State<DetailPengembalianScreen> {
                       color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
-                  _buildBadgeStatus(widget.data['status'] ?? "Dikembalikan"),
+                  _buildBadgeStatus(widget.data.peminjaman.first.statusPeminjaman ?? "Dikembalikan"),
                 ],
               ),
             ),
 
             const SizedBox(height: 15),
             // 2. KODE PEMINJAMAN
-            _buildStaticField("Kode Peminjaman", widget.data['kode'] ?? "-"),
+            _buildStaticField("Kode Peminjaman", widget.data.peminjaman.first.kodePeminjaman ?? "-"),
 
             // 3. TANGGAL PINJAM & RENCANA KEMBALI (Sejajar)
             Row(
@@ -103,7 +108,7 @@ class _DetailPengembalianScreenState extends State<DetailPengembalianScreen> {
                           ],
                         ),
                         child: Text(
-                          widget.data['tglPinjam'],
+                          formatTanggal(widget.data.peminjaman.first.tanggalPeminjaman),
                           style: GoogleFonts.poppins(
                             fontSize: 15,
                             color: const Color(0xFF2D7D46),
@@ -148,7 +153,7 @@ class _DetailPengembalianScreenState extends State<DetailPengembalianScreen> {
                           ],
                         ),
                         child: Text(
-                          widget.data['tglRencanaKembali'],
+                          formatTanggal(widget.data.peminjaman.first.tanggalKembaliRencana),
                           style: GoogleFonts.poppins(
                             fontSize: 15,
                             color: const Color(0xFF2D7D46),
@@ -195,7 +200,7 @@ class _DetailPengembalianScreenState extends State<DetailPengembalianScreen> {
                     ],
                   ),
                   child: Text(
-                    widget.data['tglKembali'],
+                    formatTanggal(widget.data.tanggalKembaliAsli),
                     style: GoogleFonts.poppins(
                       fontSize: 15,
                       color: const Color(0xFF2D7D46),
@@ -217,7 +222,7 @@ class _DetailPengembalianScreenState extends State<DetailPengembalianScreen> {
             // 6. KONFIRMASI PETUGAS
             _buildStaticField(
               "Dikonfirmasi oleh",
-              widget.data['petugas'] ?? "Petugas 1",
+              widget.data.dikonfirmasiOleh ?? "Petugas 1",
             ),
 
             const SizedBox(height: 20),

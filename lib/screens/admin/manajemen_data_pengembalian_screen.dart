@@ -15,34 +15,13 @@ class ManajemenDataPengembalianScreen extends StatefulWidget {
 
 class _ManajemenDataPengembalianScreenState
     extends State<ManajemenDataPengembalianScreen> {
-  final List<Map<String, dynamic>> dummyPengembalian = [
-    {
-      "kode": "TRX24578965",
-      "nama": "Richo Ferdinand",
-      "tglPinjam": "18/01/2026",
-      "tglRencanaKembali": "19/01/2026",
-      "tglKembali": "19/01/2026",
-      "status": "Tepat Waktu",
-      "petugas": "Petugas Admin 1",
-      "alat": [
-        {"nama": "iPad M3 Pro", "qty": "1", "kondisi": "Baik"},
-        {"nama": "Stylus Pen", "qty": "1", "kondisi": "Baik"},
-      ],
-    },
-    {
-      "kode": "TRX45672905",
-      "nama": "Richa Ferdinyoy",
-      "tglPinjam": "17/01/2026",
-      "tglRencanaKembali": "20/01/2026",
-      "tglKembali": "22/01/2026",
-      "status": "Terlambat",
-      "petugas": "Petugas Admin 2",
-      "alat": [
-        {"nama": "Sony A7 IV", "qty": "1", "kondisi": "Baik"},
-        {"nama": "Lens 35mm", "qty": "1", "kondisi": "Rusak"},
-      ],
-    },
-  ];
+  final PengembalianService _pengembalianService = PengembalianService();
+
+  bool isLoading = true;
+
+  String formatTanggal(DateTime date) {
+    return "${date.day}/${date.month}/${date.year}";
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -56,40 +35,91 @@ class _ManajemenDataPengembalianScreenState
           Expanded(
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: 15),
-              child: ListView.builder(
-                itemCount: dummyPengembalian.length,
-                itemBuilder: (context, index) {
-                  final data = dummyPengembalian[index];
+              child: FutureBuilder(
+                future: _pengembalianService.ambilPengembalian(),
+                builder: (context, asyncSnapshot) {
+                  if (asyncSnapshot.connectionState ==
+                      ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (asyncSnapshot.hasError)
+                    return Center(child: Text("Error: ${asyncSnapshot.error}"));
 
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: CardDataPengembalianWidget(
-                      kode: data["kode"]!,
-                      nama: data["nama"]!,
-                      tglPinjam: data["tglPinjam"]!,
-                      tglKembali: data["tglKembali"]!,
-                      onDetail: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                DetailPengembalianScreen(data: data),
+                  final data = asyncSnapshot.data!;
+
+                  if (data.isEmpty) {
+                    return Center(child: Text("Tidak ada data peminjaman"));
+                  }
+                  return ListView.builder(
+                    itemCount: data.length,
+                    itemBuilder: (context, index) {
+                      final listDataPengembalian = data[index];
+
+                      final peminjaman =
+                          listDataPengembalian.peminjaman.isNotEmpty
+                          ? listDataPengembalian.peminjaman.first
+                          : null;
+
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: CardDataPengembalianWidget(
+                          kode: peminjaman?.kodePeminjaman ?? '-',
+                          nama: peminjaman!.namaUser!,
+                          tglPinjam: peminjaman?.tanggalPeminjaman != null
+                              ? formatTanggal(peminjaman!.tanggalPeminjaman)
+                              : "-",
+                          tglKembali: formatTanggal(
+                            listDataPengembalian.tanggalKembaliAsli,
                           ),
-                        );
-                      },
-                      onEdit: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                EditDataPengembalianScreen(data: data),
-                          ),
-                        );
-                      },
-                      onDelete: () {
-                        debugPrint("Delete");
-                      },
-                    ),
+                          onDetail: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => DetailPengembalianScreen(
+                                  data: listDataPengembalian,
+                                ),
+                              ),
+                            );
+                          },
+                          onEdit: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    EditDataPengembalianScreen(
+                                      data: listDataPengembalian,
+                                    ),
+                              ),
+                            );
+                          },
+                          onDelete: () {
+                            AlertHelper.showConfirm(
+                              context,
+                              judul: 'Menghapus data pengembalian',
+                              pesan:
+                                  'Apakah anda yakin menghapus data pengembalian ?',
+                              onConfirm: () async {
+                                try {
+                                  await _pengembalianService.hapusPengembalian(
+                                    listDataPengembalian.idPengembalian,
+                                  );
+                                  AlertHelper.showSuccess(
+                                    context,
+                                    'Berhasil menghapus data pengembalian !',
+                                    onOk: () => setState(() {}),
+                                  );
+                                } catch (e) {
+                                  AlertHelper.showError(
+                                    context,
+                                    'Gagal menghapus data pengembalian !',
+                                  );
+                                }
+                              },
+                            );
+                          },
+                        ),
+                      );
+                    },
                   );
                 },
               ),

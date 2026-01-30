@@ -4,8 +4,8 @@ class ModelDetailPeminjaman {
   final int idAlat;
   final int jumlahPeminjaman;
   final String? kondisiAwal;
-  final String? kondisiKembali;
-  final double? dendaKerusakan;
+  String? kondisiKembali;
+  double? dendaKerusakan;
 
   final String namaAlat;
   final String? gambarAlat;

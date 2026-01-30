@@ -102,7 +102,7 @@ class _ManajemenDataPeminjamanScreenState
                                   AlertHelper.showSuccess(
                                     context,
                                     'Berhasil menghapus data peminjaman !',
-                                    onOk: () => Navigator.pop(context),
+                                    onOk: () => setState(() {}),
                                   );
                                 } catch (e) {
                                   AlertHelper.showError(
