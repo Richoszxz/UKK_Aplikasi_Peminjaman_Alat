@@ -17,6 +17,7 @@ class _ManajemenAlatScreenState extends State<ManajemenAlatScreen> {
   // Tambahkan variabel ini agar tidak error
   String selectedKategori = "Semua";
   List<String> kategoriList = ["Semua"];
+  String keywordPencarian = '';
 
   // Simpan future dalam variabel agar tidak reload terus saat setState
   late Future<List<dynamic>> _futureAlat;
@@ -51,7 +52,14 @@ class _ManajemenAlatScreenState extends State<ManajemenAlatScreen> {
       drawer: NavigationDrawerWidget(),
       body: Column(
         children: [
-          BarPencarianWidget(hintText: "Cari alat..."),
+          BarPencarianWidget(
+            hintText: "Cari alat...",
+            onSearch: (value) {
+              setState(() {
+                keywordPencarian = value.toLowerCase();
+              });
+            },
+          ),
 
           Padding(
             padding: const EdgeInsets.only(left: 15, bottom: 10),
@@ -118,19 +126,30 @@ class _ManajemenAlatScreenState extends State<ManajemenAlatScreen> {
                 if (asyncSnapshot.hasError)
                   return Center(child: Text("Error: ${asyncSnapshot.error}"));
 
-                // LOGIKA FILTER DISINI
+                // LOGIKA FILTER
                 final semuaData = asyncSnapshot.data ?? [];
-                final dataAlat = selectedKategori == "Semua"
-                    ? semuaData
-                    : semuaData
-                          .where(
-                            (alat) => alat.namaKategori == selectedKategori,
-                          )
-                          .toList();
+
+                final dataAlat = semuaData.where((alat) {
+                  // filter kategori
+                  final cocokKategori = selectedKategori == "Semua"
+                      ? true
+                      : alat.namaKategori == selectedKategori;
+
+                  // filter pencarian
+                  final cocokSearch = alat.namaAlat
+                      .toString()
+                      .toLowerCase()
+                      .contains(keywordPencarian);
+
+                  return cocokKategori && cocokSearch;
+                }).toList();
 
                 if (dataAlat.isEmpty) {
-                  return const Center(
-                    child: Text("Tidak ada alat di kategori ini."),
+                  return Center(
+                    child: Text(
+                      "Tidak ada alat di kategori ini.",
+                      style: GoogleFonts.poppins(),
+                    ),
                   );
                 }
 

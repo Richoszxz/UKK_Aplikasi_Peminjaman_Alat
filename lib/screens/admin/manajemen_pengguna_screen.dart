@@ -13,7 +13,7 @@ class ManajemenPenggunaScreen extends StatefulWidget {
 
 class _ManajemenPenggunaScreenState extends State<ManajemenPenggunaScreen> {
   final PenggunaService _penggunaService = PenggunaService();
-  int jumlahRequest = 2; // contoh: ada 2 request pending
+  String keywordPencarian = '';
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +22,14 @@ class _ManajemenPenggunaScreenState extends State<ManajemenPenggunaScreen> {
       drawer: NavigationDrawerWidget(),
       body: Column(
         children: [
-          BarPencarianWidget(hintText: 'Cari pengguna...'),
+          BarPencarianWidget(
+            hintText: 'Cari pengguna...',
+            onSearch: (value) {
+              setState(() {
+                keywordPencarian = value.toLowerCase();
+              });
+            },
+          ),
           Expanded(
             child: FutureBuilder<List<ModelPengguna>>(
               future: _penggunaService.ambilPengguna(),
@@ -42,12 +49,38 @@ class _ManajemenPenggunaScreenState extends State<ManajemenPenggunaScreen> {
                   return const Center(child: Text("Tidak ada data pengguna"));
                 }
 
-                final listPengguna = asyncSnapshot.data!;
+                final semuaData = asyncSnapshot.data!
+                    .where((e) => e != null)
+                    .toList();
+
+                final data = semuaData.where((pengguna) {
+                  final keyword = keywordPencarian;
+
+                  if (keyword.isEmpty) return true;
+
+                  final cocokUsername =
+                      pengguna.userName?.toLowerCase().contains(keyword) ??
+                      false;
+
+                  final cocokEmail =
+                      pengguna.email?.toLowerCase().contains(keyword) ?? false;
+
+                  return cocokUsername || cocokEmail;
+                }).toList();
+
+                if (data.isEmpty) {
+                  return Center(
+                    child: Text(
+                      "Pengguna tidak ditemukan",
+                      style: GoogleFonts.poppins(),
+                    ),
+                  );
+                }
 
                 return ListView.builder(
-                  itemCount: listPengguna.length,
+                  itemCount: data.length,
                   itemBuilder: (context, index) {
-                    final pengguna = listPengguna[index];
+                    final pengguna = data[index];
 
                     return Padding(
                       padding: const EdgeInsets.symmetric(
@@ -78,7 +111,7 @@ class _ManajemenPenggunaScreenState extends State<ManajemenPenggunaScreen> {
                                 AlertHelper.showSuccess(
                                   context,
                                   'Berhasil menghapus pengguna !',
-                                  onOk: () => Navigator.pop(context)
+                                  onOk: () => Navigator.pop(context),
                                 );
 
                                 setState(() {});

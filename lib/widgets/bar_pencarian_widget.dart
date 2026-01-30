@@ -3,13 +3,23 @@ import 'package:google_fonts/google_fonts.dart';
 
 class BarPencarianWidget extends StatefulWidget {
   final String hintText;
-  const BarPencarianWidget({super.key, required this.hintText});
+  final Function(String)? onSearch;
+  const BarPencarianWidget({super.key, required this.hintText, this.onSearch});
 
   @override
   State<BarPencarianWidget> createState() => _BarPencarianWidgetState();
 }
 
 class _BarPencarianWidgetState extends State<BarPencarianWidget> {
+  final TextEditingController _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    // TODO: implement dispose
+    _controller.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -31,6 +41,10 @@ class _BarPencarianWidgetState extends State<BarPencarianWidget> {
       ),
       child: Center(
         child: TextField(
+          controller: _controller,
+          onChanged: (value) {
+            widget.onSearch!(value);
+          },
           decoration: InputDecoration(
             icon: Icon(
               Icons.search,

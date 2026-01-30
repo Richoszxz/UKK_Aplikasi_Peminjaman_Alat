@@ -23,6 +23,8 @@ class _ManajemenDataPengembalianScreenState
     return "${date.day}/${date.month}/${date.year}";
   }
 
+  String keywoardPencarian = '';
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -30,7 +32,14 @@ class _ManajemenDataPengembalianScreenState
       drawer: NavigationDrawerWidget(),
       body: Column(
         children: [
-          BarPencarianWidget(hintText: "Cari data pengembalian..."),
+          BarPencarianWidget(
+            hintText: "Cari data pengembalian...",
+            onSearch: (value) {
+              setState(() {
+                keywoardPencarian = value.toLowerCase();
+              });
+            },
+          ),
 
           Expanded(
             child: Padding(
@@ -45,7 +54,29 @@ class _ManajemenDataPengembalianScreenState
                   if (asyncSnapshot.hasError)
                     return Center(child: Text("Error: ${asyncSnapshot.error}"));
 
-                  final data = asyncSnapshot.data!;
+                  final semuaData = asyncSnapshot.data!
+                      .where((e) => e != null)
+                      .toList();
+
+                  final data = semuaData.where((pengembalian) {
+                    final keyword = keywoardPencarian;
+
+                    if (keyword.isEmpty) return true;
+
+                    final cocokKode =
+                        pengembalian.peminjaman.first.kodePeminjaman
+                            ?.toLowerCase()
+                            .contains(keyword) ??
+                        false;
+
+                    final cocokNama =
+                        pengembalian.peminjaman.first.namaUser
+                            ?.toLowerCase()
+                            .contains(keyword) ??
+                        false;
+
+                    return cocokKode || cocokNama;
+                  }).toList();
 
                   if (data.isEmpty) {
                     return Center(child: Text("Tidak ada data peminjaman"));

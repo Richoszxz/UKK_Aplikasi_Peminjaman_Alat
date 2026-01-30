@@ -22,6 +22,8 @@ class _ManajemenDataPeminjamanScreenState
     return "${date.day}/${date.month}/${date.year}";
   }
 
+  String keywordPencarian = '';
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -29,7 +31,14 @@ class _ManajemenDataPeminjamanScreenState
       drawer: NavigationDrawerWidget(),
       body: Column(
         children: [
-          BarPencarianWidget(hintText: "Cari data peminjaman..."),
+          BarPencarianWidget(
+            hintText: "Cari data peminjaman...",
+            onSearch: (value) {
+              setState(() {
+                keywordPencarian = value.toLowerCase();
+              });
+            },
+          ),
 
           Expanded(
             child: Padding(
@@ -44,7 +53,33 @@ class _ManajemenDataPeminjamanScreenState
                   if (asyncSnapshot.hasError)
                     return Center(child: Text("Error: ${asyncSnapshot.error}"));
 
-                  final data = asyncSnapshot.data!;
+                  final semuaData = asyncSnapshot.data!
+                      .where((e) => e != null)
+                      .toList();
+
+                  final data = semuaData.where((peminjaman) {
+                    final keyword = keywordPencarian;
+
+                    if (keyword.isEmpty) return true;
+
+                    final cocokKode =
+                        peminjaman.kodePeminjaman?.toLowerCase().contains(
+                          keyword,
+                        ) ??
+                        false;
+
+                    final cocokNama =
+                        peminjaman.namaUser?.toLowerCase().contains(keyword) ??
+                        false;
+
+                    return cocokKode || cocokNama;
+                  }).toList();
+
+                  if (data.isEmpty) {
+                    return const Center(
+                      child: Text("Data peminjaman tidak ditemukan"),
+                    );
+                  }
 
                   if (data.isEmpty) {
                     return Center(child: Text("Tidak ada data peminjaman"));

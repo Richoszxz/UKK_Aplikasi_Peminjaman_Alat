@@ -12,6 +12,7 @@ class ManajemenKategoriScreen extends StatefulWidget {
 
 class _ManajemenKategoriScreenState extends State<ManajemenKategoriScreen> {
   final KategoriService _kategoriService = KategoriService();
+  String keywordPencarian = '';
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +21,14 @@ class _ManajemenKategoriScreenState extends State<ManajemenKategoriScreen> {
       drawer: NavigationDrawerWidget(),
       body: Column(
         children: [
-          BarPencarianWidget(hintText: "Cari kategori..."),
+          BarPencarianWidget(
+            hintText: "Cari kategori...",
+            onSearch: (value) {
+              setState(() {
+                keywordPencarian = value.toLowerCase();
+              });
+            },
+          ),
 
           Expanded(
             child: Padding(
@@ -44,7 +52,14 @@ class _ManajemenKategoriScreenState extends State<ManajemenKategoriScreen> {
                     return const Center(child: Text("Tidak ada data pengguna"));
                   }
 
-                  final data = asyncSnapshot.data!;
+                  final semuaData = asyncSnapshot.data!;
+
+                  final data = semuaData.where((kategori) {
+                    return kategori.namaKategori
+                        .toString()
+                        .toLowerCase()
+                        .contains(keywordPencarian);
+                  }).toList();
 
                   return ListView.builder(
                     itemCount: data.length,
