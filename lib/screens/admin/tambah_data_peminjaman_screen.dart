@@ -11,26 +11,103 @@ class TambahDataPeminjamanScreen extends StatefulWidget {
 
 class _TambahDataPeminjamanScreenState
     extends State<TambahDataPeminjamanScreen> {
-  final List<String> listSiswa = [
-    "Richo Ferdinand",
-    "Richa Ferdinyoy",
-    "Gema AI",
-  ];
-  final List<String> listAlatInventaris = [
-    "iPad M3 Pro",
-    "Stylus Pen",
-    "MacBook Air",
-    "Kamera DSLR",
-  ];
+  final PenggunaService _penggunaService = PenggunaService();
+  final AlatService _alatService = AlatService();
+  final PeminjamanService _peminjamanService = PeminjamanService();
 
-  String? selectedMahasiswa;
+  List<ModelPengguna> listPengguna = [];
+  List<ModelAlat> listAlat = [];
+
+  bool isLoading = false;
+
+  ModelPengguna? peminjamTerpilih;
   DateTime? tglPinjam;
   DateTime? tglRencanaKembali;
 
   // State utama: List ini menampung object alat yang sedang diedit di form
   List<Map<String, dynamic>> barisAlat = [
-    {"nama": null, "qty": 0}, // Baris pertama default
+    {"alat": null, "qty": 0}, // Baris pertama default
   ];
+
+  Future<void> _loadData() async {
+    try {
+      final pengguna = await _penggunaService.ambilPengguna();
+      final alat = await _alatService.ambilAlat();
+
+      setState(() {
+        listPengguna = pengguna;
+        listAlat = alat;
+      });
+    } catch (e) {
+      debugPrint("Gagal load data: $e");
+    }
+  }
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _simpanPeminjaman() async {
+    try {
+      // ================= VALIDASI =================
+      if (peminjamTerpilih == null) {
+        throw Exception("Peminjam belum dipilih");
+      }
+
+      if (tglPinjam == null || tglRencanaKembali == null) {
+        throw Exception("Tanggal belum lengkap");
+      }
+
+      final alatValid = barisAlat.where((e) => e['alat'] != null).toList();
+      if (alatValid.isEmpty) {
+        throw Exception("Minimal pilih 1 alat");
+      }
+
+      setState(() => isLoading = true);
+
+      // ================= FORMAT DETAIL =================
+      final detailAlat = alatValid.map((e) {
+        final ModelAlat alat = e['alat'];
+        final int qty = e['qty'];
+
+        return {'id_alat': alat.idAlat, 'qty': qty};
+      }).toList();
+
+      // ================= SIMPAN =================
+      await _peminjamanService.tambahPeminjaman(
+        idUser: peminjamTerpilih!.idUser!,
+        tglPinjam: tglPinjam!,
+        tglRencanaKembali: tglRencanaKembali!,
+        detailAlat: detailAlat,
+      );
+
+      if (mounted) {
+        AlertHelper.showSuccess(
+          context,
+          'Berhasil menyimpan data peminjaman',
+          onOk: () {
+            Navigator.pop(context);
+            setState(() {});
+          },
+        );
+      }
+    } catch (e) {
+      debugPrint("Gagal simpan: $e");
+      AlertHelper.showError(
+        context,
+        'Gagal menyimpan data peminjaman',
+        onOk: () {
+          Navigator.pop(context);
+          setState(() {});
+        },
+      );
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -97,17 +174,26 @@ class _TambahDataPeminjamanScreenState
             height: double.infinity,
             decoration: BoxDecoration(borderRadius: BorderRadius.circular(10)),
             child: ElevatedButton(
-              onPressed: () {},
+              onPressed: isLoading ? null : _simpanPeminjaman,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.primary,
               ),
-              child: Text(
-                "Buat Peminjaman",
-                style: GoogleFonts.poppins(
-                  fontSize: 18,
-                  color: Theme.of(context).colorScheme.onPrimary,
-                ),
-              ),
+              child: isLoading
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : Text(
+                      "Buat Peminjaman",
+                      style: GoogleFonts.poppins(
+                        fontSize: 18,
+                        color: Theme.of(context).colorScheme.onPrimary,
+                      ),
+                    ),
             ),
           ),
         ),
@@ -139,8 +225,8 @@ class _TambahDataPeminjamanScreenState
                   ),
                   decoration: _fieldDecoration(),
                   child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: barisAlat[index]['nama'],
+                    child: DropdownButton<ModelAlat>(
+                      value: barisAlat[index]['alat'],
                       hint: Text(
                         "Pilih alat",
                         style: GoogleFonts.poppins(
@@ -149,13 +235,14 @@ class _TambahDataPeminjamanScreenState
                         ),
                       ),
                       isExpanded: true,
-                      items: listAlatInventaris
-                          .map(
-                            (e) => DropdownMenuItem(value: e, child: Text(e)),
-                          )
-                          .toList(),
+                      items: listAlat.map((alat) {
+                        return DropdownMenuItem<ModelAlat>(
+                          value: alat,
+                          child: Text(alat.namaAlat),
+                        );
+                      }).toList(),
                       onChanged: (v) {
-                        setState(() => barisAlat[index]['nama'] = v);
+                        setState(() => barisAlat[index]['alat'] = v);
                       },
                     ),
                   ),
@@ -222,7 +309,7 @@ class _TambahDataPeminjamanScreenState
         onPressed: () {
           setState(() {
             // Menambah "Template" data kosong ke list agar baris baru muncul
-            barisAlat.add({"nama": null, "qty": 0});
+            barisAlat.add({"alat": null, "qty": 0});
           });
         },
         child: Text(
@@ -251,8 +338,8 @@ class _TambahDataPeminjamanScreenState
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: _fieldDecoration(),
       child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: selectedMahasiswa,
+        child: DropdownButton<ModelPengguna>(
+          value: peminjamTerpilih,
           hint: Text(
             "Pilih Siswa",
             style: GoogleFonts.poppins(
@@ -260,10 +347,13 @@ class _TambahDataPeminjamanScreenState
             ),
           ),
           isExpanded: true,
-          items: listSiswa
-              .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-              .toList(),
-          onChanged: (v) => setState(() => selectedMahasiswa = v),
+          items: listPengguna.map((item) {
+            return DropdownMenuItem<ModelPengguna>(
+              value: item,
+              child: Text(item.userName ?? "-"),
+            );
+          }).toList(),
+          onChanged: (v) => setState(() => peminjamTerpilih = v),
         ),
       ),
     );

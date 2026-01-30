@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:creaventory/export.dart';
+import 'package:intl/intl.dart';
 
 class DetailPeminjamanScreen extends StatefulWidget {
   // Menerima data dari halaman Manajemen
-  final Map<String, dynamic> data;
+  final ModelPeminjaman data;
 
   const DetailPeminjamanScreen({super.key, required this.data});
 
@@ -15,13 +16,15 @@ class _DetailPeminjamanScreenState extends State<DetailPeminjamanScreen> {
   @override
   Widget build(BuildContext context) {
     // Logika untuk mengambil inisial nama (Contoh: Richo Ferdinand -> RF)
-    String nama = widget.data['nama'] ?? "User";
+    String nama = widget.data.namaUser ?? "User";
     String inisial = nama
         .split(' ')
         .map((e) => e[0])
         .take(2)
         .join()
         .toUpperCase();
+
+    final dateFormatter = DateFormat('dd MMM yyyy');
 
     return Scaffold(
       appBar: AppBarWidget(
@@ -58,14 +61,17 @@ class _DetailPeminjamanScreenState extends State<DetailPeminjamanScreen> {
                     ),
                   ),
                   // Badge Status (Opsional, sesuaikan jika ada data status)
-                  _buildBadgeStatus(widget.data['status'] ?? "Dipinjam"),
+                  _buildBadgeStatus(widget.data.statusPeminjaman),
                 ],
               ),
             ),
 
             SizedBox(height: 15),
             // 2. KODE PEMINJAMAN
-            _buildStaticField("Kode Peminjaman", widget.data['kode'] ?? "-"),
+            _buildStaticField(
+              "Kode Peminjaman",
+              widget.data.kodePeminjaman ?? "-",
+            ),
 
             SizedBox(height: 10),
 
@@ -105,7 +111,7 @@ class _DetailPeminjamanScreenState extends State<DetailPeminjamanScreen> {
                           ],
                         ),
                         child: Text(
-                          widget.data['tglPinjam'],
+                          dateFormatter.format(widget.data.tanggalPeminjaman),
                           style: GoogleFonts.poppins(
                             fontSize: 15,
                             color: const Color(0xFF2D7D46),
@@ -150,7 +156,9 @@ class _DetailPeminjamanScreenState extends State<DetailPeminjamanScreen> {
                           ],
                         ),
                         child: Text(
-                          widget.data['tglRencanaKembali'],
+                          dateFormatter.format(
+                            widget.data.tanggalKembaliRencana,
+                          ),
                           style: GoogleFonts.poppins(
                             fontSize: 15,
                             color: const Color(0xFF2D7D46),
@@ -170,13 +178,19 @@ class _DetailPeminjamanScreenState extends State<DetailPeminjamanScreen> {
             _buildLabel("Daftar alat:"),
             // Jika data alat ada di dalam map, kita loop.
             // Jika tidak, kita pakai data dummy untuk visualisasi dulu.
-            _buildItemCardDetail("iPad M3 Pro", "1", "Baik"),
-            _buildItemCardDetail("Stylus Pen", "1", "Baik"),
+            ...widget.data.detailPeminjaman.map((item) {
+              return _buildItemCardDetail(
+                item.namaAlat,
+                item.jumlahPeminjaman,
+                item.kondisiAlat,
+                item.gambarAlat
+              );
+            }),
 
             // 5. PENYETUJU
             _buildStaticField(
               "Disetujui oleh",
-              widget.data['petugas'] ?? "Petugas 1",
+              widget.data.namaPenyetuju ?? "Petugas",
             ),
           ],
         ),
@@ -261,10 +275,15 @@ class _DetailPeminjamanScreenState extends State<DetailPeminjamanScreen> {
     );
   }
 
-  Widget _buildItemCardDetail(String nama, String qty, String kondisi) {
+  Widget _buildItemCardDetail(
+    String nama,
+    int qty,
+    String kondisi,
+    String? gambar,
+  ) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: const Color(0xFFD9E9D9),
         borderRadius: BorderRadius.circular(15),
@@ -273,21 +292,33 @@ class _DetailPeminjamanScreenState extends State<DetailPeminjamanScreen> {
           BoxShadow(
             color: Colors.black.withOpacity(0.25),
             blurRadius: 5,
-            offset: Offset(0, 5),
+            offset: const Offset(0, 5),
           ),
         ],
       ),
       child: Row(
         children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: const Color(0xFF2D7D46),
-              borderRadius: BorderRadius.circular(12),
-            ),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: gambar != null && gambar.isNotEmpty
+                ? Image.network(
+                    gambar,
+                    width: 60,
+                    height: 60,
+                    fit: BoxFit.cover,
+                  )
+                : Container(
+                  height: 60,
+                  width: 60,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary,
+                    borderRadius: BorderRadius.circular(10)
+                  ),
+                ),
           ),
+
           const SizedBox(width: 15),
+
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
