@@ -13,7 +13,6 @@ class DetailPengembalianScreen extends StatefulWidget {
 }
 
 class _DetailPengembalianScreenState extends State<DetailPengembalianScreen> {
-
   String formatTanggal(DateTime date) {
     return "${date.day}/${date.month}/${date.year}";
   }
@@ -63,14 +62,20 @@ class _DetailPengembalianScreenState extends State<DetailPengembalianScreen> {
                       color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
-                  _buildBadgeStatus(widget.data.peminjaman.first.statusPeminjaman ?? "Dikembalikan"),
+                  _buildBadgeStatus(
+                    widget.data.peminjaman.first.statusPeminjaman ??
+                        "Dikembalikan",
+                  ),
                 ],
               ),
             ),
 
             const SizedBox(height: 15),
             // 2. KODE PEMINJAMAN
-            _buildStaticField("Kode Peminjaman", widget.data.peminjaman.first.kodePeminjaman ?? "-"),
+            _buildStaticField(
+              "Kode Peminjaman",
+              widget.data.peminjaman.first.kodePeminjaman ?? "-",
+            ),
 
             // 3. TANGGAL PINJAM & RENCANA KEMBALI (Sejajar)
             Row(
@@ -108,7 +113,9 @@ class _DetailPengembalianScreenState extends State<DetailPengembalianScreen> {
                           ],
                         ),
                         child: Text(
-                          formatTanggal(widget.data.peminjaman.first.tanggalPeminjaman),
+                          formatTanggal(
+                            widget.data.peminjaman.first.tanggalPeminjaman,
+                          ),
                           style: GoogleFonts.poppins(
                             fontSize: 15,
                             color: const Color(0xFF2D7D46),
@@ -153,7 +160,9 @@ class _DetailPengembalianScreenState extends State<DetailPengembalianScreen> {
                           ],
                         ),
                         child: Text(
-                          formatTanggal(widget.data.peminjaman.first.tanggalKembaliRencana),
+                          formatTanggal(
+                            widget.data.peminjaman.first.tanggalKembaliRencana,
+                          ),
                           style: GoogleFonts.poppins(
                             fontSize: 15,
                             color: const Color(0xFF2D7D46),
@@ -216,8 +225,14 @@ class _DetailPengembalianScreenState extends State<DetailPengembalianScreen> {
             // 5. DAFTAR ALAT
             _buildLabel("Daftar alat:"),
             // Kamu bisa mengganti ini dengan ListView.builder jika data alatnya dinamis dalam List
-            _buildItemCardDetail("iPad M3 Pro", "1", "Baik"),
-            _buildItemCardDetail("Stylus Pen", "1", "Baik"),
+            ...widget.data.peminjaman.first.detailPeminjaman.map((item) {
+              return _buildItemCardDetail(
+                item.namaAlat,
+                item.jumlahPeminjaman,
+                item.kondisiAlat,
+                item.gambarAlat,
+              );
+            }),
 
             // 6. KONFIRMASI PETUGAS
             _buildStaticField(
@@ -313,7 +328,12 @@ class _DetailPengembalianScreenState extends State<DetailPengembalianScreen> {
     );
   }
 
-  Widget _buildItemCardDetail(String nama, String qty, String kondisi) {
+  Widget _buildItemCardDetail(
+    String nama,
+    int qty,
+    String kondisi,
+    String? gambar,
+  ) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
@@ -331,13 +351,23 @@ class _DetailPengembalianScreenState extends State<DetailPengembalianScreen> {
       ),
       child: Row(
         children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: const Color(0xFF2D7D46),
-              borderRadius: BorderRadius.circular(12),
-            ),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: gambar != null && gambar.isNotEmpty
+                ? Image.network(
+                    gambar,
+                    width: 60,
+                    height: 60,
+                    fit: BoxFit.cover,
+                  )
+                : Container(
+                    height: 60,
+                    width: 60,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primary,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
           ),
           const SizedBox(width: 15),
           Expanded(

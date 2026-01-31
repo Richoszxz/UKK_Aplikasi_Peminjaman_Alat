@@ -66,6 +66,16 @@ class _TambahDataPeminjamanScreenState
         throw Exception("Minimal pilih 1 alat");
       }
 
+      for (var item in alatValid) {
+        final ModelAlat alat = item['alat'];
+        final int qty = item['qty'];
+        if (qty > alat.stokAlat) {
+          throw Exception(
+            "Stok ${alat.namaAlat} tidak cukup. Tersedia: ${alat.stokAlat}, diminta: $qty",
+          );
+        }
+      }
+
       setState(() => isLoading = true);
 
       // ================= FORMAT DETAIL =================
@@ -84,16 +94,8 @@ class _TambahDataPeminjamanScreenState
         detailAlat: detailAlat,
       );
 
-      if (mounted) {
-        AlertHelper.showSuccess(
-          context,
-          'Berhasil menyimpan data peminjaman',
-          onOk: () {
-            Navigator.pop(context);
-            setState(() {});
-          },
-        );
-      }
+      if (mounted) Navigator.pop(context);
+      AlertHelper.showSuccess(context, "Berhasil menyimpan data peminjaman");
     } catch (e) {
       debugPrint("Gagal simpan: $e");
       AlertHelper.showError(
@@ -104,8 +106,6 @@ class _TambahDataPeminjamanScreenState
           setState(() {});
         },
       );
-    } finally {
-      if (mounted) setState(() => isLoading = false);
     }
   }
 
@@ -139,13 +139,13 @@ class _TambahDataPeminjamanScreenState
             _tanggalField(
               label: "Tanggal peminjaman:",
               selectedDate: tglPinjam,
-              onTap: () => _selectDate(context, true),
+              onTap: () => _selectDateTime(context, true),
             ),
             const SizedBox(height: 20),
             _tanggalField(
               label: "Rencana tanggal pengembalian:",
               selectedDate: tglRencanaKembali,
-              onTap: () => _selectDate(context, false),
+              onTap: () => _selectDateTime(context, false),
             ),
             const SizedBox(height: 100),
           ],
@@ -234,6 +234,11 @@ class _TambahDataPeminjamanScreenState
                           color: Theme.of(context).colorScheme.onSecondary,
                         ),
                       ),
+                      dropdownColor: Theme.of(context).colorScheme.secondary,
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        color: Theme.of(context).colorScheme.onSecondary,
+                      ),
                       isExpanded: true,
                       items: listAlat.map((alat) {
                         return DropdownMenuItem<ModelAlat>(
@@ -298,7 +303,10 @@ class _TambahDataPeminjamanScreenState
     return Container(
       width: double.infinity,
       height: 40,
-      decoration: BoxDecoration(color: Theme.of(context).colorScheme.secondary),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.secondary,
+        borderRadius: BorderRadius.circular(15),
+      ),
       child: OutlinedButton(
         style: OutlinedButton.styleFrom(
           side: BorderSide(color: Theme.of(context).colorScheme.primary),
@@ -346,6 +354,11 @@ class _TambahDataPeminjamanScreenState
               color: Theme.of(context).colorScheme.onSecondary,
             ),
           ),
+          dropdownColor: Theme.of(context).colorScheme.secondary,
+          style: GoogleFonts.poppins(
+            fontSize: 16,
+            color: Theme.of(context).colorScheme.onSecondary,
+          ),
           isExpanded: true,
           items: listPengguna.map((item) {
             return DropdownMenuItem<ModelPengguna>(
@@ -367,17 +380,40 @@ class _TambahDataPeminjamanScreenState
     );
   }
 
-  Future<void> _selectDate(BuildContext context, bool isPinjam) async {
-    final DateTime? picked = await showDatePicker(
+  Future<void> _selectDateTime(BuildContext context, bool isPinjam) async {
+    // Pilih tanggal dulu
+    final DateTime? tanggalTerpilih = await showDatePicker(
       context: context,
       initialDate: DateTime.now(),
       firstDate: DateTime(2020),
       lastDate: DateTime(2101),
     );
-    if (picked != null) {
-      setState(
-        () => isPinjam ? tglPinjam = picked : tglRencanaKembali = picked,
+
+    if (tanggalTerpilih != null) {
+      // Pilih waktu
+      final TimeOfDay? waktuTerpilih = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.now(),
       );
+
+      if (waktuTerpilih != null) {
+        // Gabungkan tanggal dan waktu menjadi DateTime
+        final DateTime tanggalDanWaktu = DateTime(
+          tanggalTerpilih.year,
+          tanggalTerpilih.month,
+          tanggalTerpilih.day,
+          waktuTerpilih.hour,
+          waktuTerpilih.minute,
+        );
+
+        setState(() {
+          if (isPinjam) {
+            tglPinjam = tanggalDanWaktu;
+          } else {
+            tglRencanaKembali = tanggalDanWaktu;
+          }
+        });
+      }
     }
   }
 

@@ -134,11 +134,9 @@ class _ManajemenDataPeminjamanScreenState
                                     listDataPeminjaman.idPeminjaman,
                                   );
 
-                                  AlertHelper.showSuccess(
-                                    context,
-                                    'Berhasil menghapus data peminjaman !',
-                                    onOk: () => setState(() {}),
-                                  );
+                                  setState(() {});
+
+                                  AlertHelper.showSuccess(context, "Berhasil menyimpan data peminjaman !");
                                 } catch (e) {
                                   AlertHelper.showError(
                                     context,
@@ -165,7 +163,7 @@ class _ManajemenDataPeminjamanScreenState
             MaterialPageRoute(
               builder: (context) => TambahDataPeminjamanScreen(),
             ),
-          );
+          ).then((_) => setState(() {}));
         },
         backgroundColor: Theme.of(context).colorScheme.primary,
         child: const Icon(Icons.add),
