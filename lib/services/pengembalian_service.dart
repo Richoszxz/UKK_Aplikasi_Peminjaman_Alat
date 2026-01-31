@@ -9,7 +9,11 @@ class PengembalianService {
     final result = await _client
         .from('pengembalian')
         .select('''
-          *, peminjaman(
+          *, 
+          pengonfirmasi:pengguna!pengembalian_dikonfirmasi_oleh_fkey(
+          username
+          ),
+          peminjaman(
           id_peminjaman,
           id_user,
           tanggal_peminjaman,

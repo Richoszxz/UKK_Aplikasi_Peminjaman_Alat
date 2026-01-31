@@ -120,7 +120,7 @@ class _ManajemenDataPeminjamanScreenState
                                   data: listDataPeminjaman,
                                 ),
                               ),
-                            );
+                            ).then((_) => setState(() {}));
                           },
                           onDelete: () {
                             AlertHelper.showConfirm(
@@ -136,7 +136,10 @@ class _ManajemenDataPeminjamanScreenState
 
                                   setState(() {});
 
-                                  AlertHelper.showSuccess(context, "Berhasil menyimpan data peminjaman !");
+                                  AlertHelper.showSuccess(
+                                    context,
+                                    "Berhasil menyimpan data peminjaman !",
+                                  );
                                 } catch (e) {
                                   AlertHelper.showError(
                                     context,

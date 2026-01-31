@@ -17,15 +17,81 @@ class _EditDataPengembalianScreenState
   DateTime? tglKembali;
   List<ModelDetailPeminjaman> daftarAlat = [];
   Map<String, String> kondisiAlat = {};
+  bool isLoading = false;
+
+  int terlambatHari = 0;
+  int dendaTerlambat = 0;
+  int dendaKerusakan = 0;
+  int totalDenda = 0;
 
   @override
   void initState() {
     super.initState();
-    selectedKode = widget.data.peminjaman.first.kodePeminjaman;
-    daftarAlat = widget.data.peminjaman.first.detailPeminjaman;
+    selectedKode = widget.data.peminjaman?.kodePeminjaman;
+    daftarAlat = widget.data.peminjaman!.detailPeminjaman;
 
     for (var item in daftarAlat) {
       kondisiAlat[item.namaAlat] = item.kondisiKembali ?? "Baik";
+    }
+  }
+
+  int hitungDendaKerusakan() {
+    int total = 0;
+    for (var item in daftarAlat) {
+      if (item.kondisiKembali?.toLowerCase() == 'rusak') total += 50000;
+    }
+    return total;
+  }
+
+  Future<void> _previewDendaTerlambat() async {
+    final idPeminjaman = widget.data.peminjaman?.idPeminjaman;
+    if (idPeminjaman == null || tglKembali == null) return;
+
+    final res = await SupabaseService.client.rpc(
+      'preview_denda_terlambat',
+      params: {
+        'p_id_peminjaman': idPeminjaman,
+        'p_tanggal_kembali': tglKembali!.toIso8601String(),
+      },
+    );
+
+    if (res != null && res.isNotEmpty) {
+      setState(() {
+        terlambatHari = res[0]['terlambat_hari'] ?? 0;
+        dendaTerlambat = res[0]['denda_terlambat'] ?? 0;
+        dendaKerusakan = hitungDendaKerusakan();
+        totalDenda = dendaTerlambat + dendaKerusakan;
+      });
+    }
+  }
+
+  Future<void> _updatePengembalian() async {
+    if (tglKembali == null || isLoading) return;
+
+    try {
+      final userId = SupabaseService.client.auth.currentUser!.id;
+
+      // Update pengembalian
+      await SupabaseService.client
+          .from('pengembalian')
+          .update({
+            'tanggal_kembali_asli': tglKembali!.toIso8601String(),
+            'dikonfirmasi_oleh': userId,
+          })
+          .eq('id_pengembalian', widget.data.idPengembalian);
+
+      // Update kondisi alat
+      for (var item in daftarAlat) {
+        await SupabaseService.client
+            .from('detail_peminjaman')
+            .update({'kondisi_kembali': item.kondisiKembali})
+            .eq('id_detail_peminjaman', item.idDetailPeminjaman);
+      }
+
+      if (mounted) Navigator.pop(context);
+      AlertHelper.showSuccess(context, 'Berhasil update pengembalian!');
+    } catch (e) {
+      AlertHelper.showError(context, 'Gagal update pengembalian!');
     }
   }
 
@@ -51,16 +117,14 @@ class _EditDataPengembalianScreenState
             ),
             const SizedBox(height: 20),
             _buildLabel("Daftar alat:"),
-            Column(
-              children: daftarAlat.map(_buildItemCard).toList(),
-            ),
+            Column(children: daftarAlat.map(_buildItemCard).toList()),
             const SizedBox(height: 20),
             _buildLabel("Ringkasan Denda:"),
             _buildDendaCard(
-              0,
-              0,
-              0,
-              0,
+              terlambatHari,
+              dendaTerlambat,
+              dendaKerusakan,
+              totalDenda,
             ), // Hitung ulang denda jika tglKembali berubah
             const SizedBox(height: 40),
           ],
@@ -81,17 +145,23 @@ class _EditDataPengembalianScreenState
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: ElevatedButton(
-        onPressed: () {
-          // Logika Update Simpan
-          Navigator.pop(context);
-        },
+        onPressed: isLoading ? null : _updatePengembalian,
         style: ElevatedButton.styleFrom(
           backgroundColor: Theme.of(context).colorScheme.primary,
         ),
-        child: Text(
-          "Simpan Perubahan",
-          style: GoogleFonts.poppins(color: Colors.white, fontSize: 18),
-        ),
+        child: isLoading
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              )
+            : Text(
+                "Simpan Perubahan",
+                style: GoogleFonts.poppins(color: Colors.white, fontSize: 18),
+              ),
       ),
     );
   }
@@ -145,12 +215,16 @@ class _EditDataPengembalianScreenState
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
+      initialDate:
+          tglKembali ?? widget.data.tanggalKembaliAsli ?? DateTime.now(),
       firstDate: DateTime(2020),
       lastDate: DateTime(2101),
     );
     if (picked != null) {
-      setState((tglKembali = picked) as VoidCallback);
+      setState(() {
+        tglKembali = picked;
+      });
+      await _previewDendaTerlambat();
     }
   }
 
@@ -325,7 +399,4 @@ class _EditDataPengembalianScreenState
       ),
     );
   }
-
-  // Tambahkan fungsi _buildBottomButton mirip di atas dengan label "Update Pengembalian"
-  // ... (Sertakan widget helpers lainnya dari file Tambah Pengembalian)
 }

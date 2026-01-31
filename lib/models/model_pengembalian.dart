@@ -8,8 +8,9 @@ class ModelPengembalian {
   final double? totalDenda;
   final double? dendaTerlambat;
   final String? dikonfirmasiOleh;
+  final String? namaPengonfirmasi;
 
-  final List<ModelPeminjaman> peminjaman;
+  final ModelPeminjaman? peminjaman;
 
   ModelPengembalian({
     required this.idPengembalian,
@@ -19,11 +20,11 @@ class ModelPengembalian {
     this.totalDenda,
     this.dendaTerlambat,
     this.dikonfirmasiOleh,
-    this.peminjaman = const [],
+    this.namaPengonfirmasi,
+    this.peminjaman,
   });
 
   factory ModelPengembalian.fromJson(Map<String, dynamic> map) {
-    final peminjaman = map['peminjaman'];
     return ModelPengembalian(
       idPengembalian: map['id_pengembalian'],
       idPeminjaman: map['id_peminjaman'],
@@ -36,9 +37,12 @@ class ModelPengembalian {
           ? double.parse(map['denda_terlambat'].toString())
           : null,
       dikonfirmasiOleh: map['dikonfirmasi_oleh'],
-      peminjaman: peminjaman != null
-          ? [ModelPeminjaman.fromJson(peminjaman)]
-          : [],
+      namaPengonfirmasi: map['pengonfirmasi'] != null
+          ? map['pengonfirmasi']['username']
+          : null,
+      peminjaman: map['peminjaman'] != null
+          ? ModelPeminjaman.fromJson(map['peminjaman'])
+          : null,
     );
   }
 }

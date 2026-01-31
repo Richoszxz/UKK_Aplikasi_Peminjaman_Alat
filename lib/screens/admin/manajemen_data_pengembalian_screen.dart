@@ -64,13 +64,13 @@ class _ManajemenDataPengembalianScreenState
                     if (keyword.isEmpty) return true;
 
                     final cocokKode =
-                        pengembalian.peminjaman.first.kodePeminjaman
+                        pengembalian.peminjaman?.kodePeminjaman
                             ?.toLowerCase()
                             .contains(keyword) ??
                         false;
 
                     final cocokNama =
-                        pengembalian.peminjaman.first.namaUser
+                        pengembalian.peminjaman?.namaUser
                             ?.toLowerCase()
                             .contains(keyword) ??
                         false;
@@ -86,10 +86,7 @@ class _ManajemenDataPengembalianScreenState
                     itemBuilder: (context, index) {
                       final listDataPengembalian = data[index];
 
-                      final peminjaman =
-                          listDataPengembalian.peminjaman.isNotEmpty
-                          ? listDataPengembalian.peminjaman.first
-                          : null;
+                      final peminjaman = listDataPengembalian.peminjaman;
 
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 10),
@@ -121,7 +118,7 @@ class _ManajemenDataPengembalianScreenState
                                       data: listDataPengembalian,
                                     ),
                               ),
-                            );
+                            ).then((_) => setState(() {}));
                           },
                           onDelete: () {
                             AlertHelper.showConfirm(
@@ -165,7 +162,7 @@ class _ManajemenDataPengembalianScreenState
             MaterialPageRoute(
               builder: (context) => TambahDataPengembalianScreen(),
             ),
-          );
+          ).then((_) => setState(() {}));
         },
         backgroundColor: Theme.of(context).colorScheme.primary,
         child: const Icon(Icons.add),

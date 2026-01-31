@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:creaventory/export.dart';
 
+class BarisAlat {
+  ModelAlat? alat;
+  int qty;
+
+  BarisAlat({this.alat, this.qty = 1});
+}
+
 class EditDataPeminjamanScreen extends StatefulWidget {
   final ModelPeminjaman data; // Menerima data lama
 
@@ -12,10 +19,13 @@ class EditDataPeminjamanScreen extends StatefulWidget {
 }
 
 class _EditDataPeminjamanScreenState extends State<EditDataPeminjamanScreen> {
-  String? peminjamTerpilih;
   DateTime? tglPinjam;
   DateTime? tglRencanaKembali;
-  List<Map<String, dynamic>> barisAlat = [];
+  List<BarisAlat> barisAlat = [BarisAlat()];
+  ModelPengguna? peminjamTerpilih;
+  ModelAlat? alatDipinjam;
+  final PeminjamanService _peminjamanService = PeminjamanService();
+  bool isLoading = false;
 
   final PenggunaService _penggunaService = PenggunaService();
   List<ModelPengguna> listPengguna = [];
@@ -23,25 +33,28 @@ class _EditDataPeminjamanScreenState extends State<EditDataPeminjamanScreen> {
   final AlatService _alatService = AlatService();
   List<ModelAlat> listAlat = [];
 
-  Future<void> loadPengguna() async {
+  Future<void> _loadData() async {
     try {
-      final result = await _penggunaService.ambilPengguna();
-      setState(() {
-        listPengguna = result;
-      });
-    } catch (e) {
-      debugPrint("Gagal load pengguna: $e");
-    }
-  }
+      final pengguna = await _penggunaService.ambilPengguna();
+      final alat = await _alatService.ambilAlat();
 
-  Future<void> loadAlat() async {
-    try {
-      final result = await _alatService.ambilAlat();
       setState(() {
-        listAlat = result;
+        listPengguna = pengguna;
+        listAlat = alat;
+
+        // PREFILL PEMINJAM
+        peminjamTerpilih = listPengguna.firstWhere(
+          (u) => u.idUser == widget.data.idUser,
+        );
+
+        // PREFILL ALAT
+        barisAlat = widget.data.detailPeminjaman.map((d) {
+          final alatDipinjam = listAlat.firstWhere((a) => a.idAlat == d.idAlat);
+          return BarisAlat(alat: alatDipinjam, qty: d.jumlahPeminjaman);
+        }).toList();
       });
     } catch (e) {
-      debugPrint("Gagal load alat: $e");
+      debugPrint("Gagal load edit data: $e");
     }
   }
 
@@ -49,25 +62,44 @@ class _EditDataPeminjamanScreenState extends State<EditDataPeminjamanScreen> {
   void initState() {
     super.initState();
 
-    peminjamTerpilih = widget.data.namaUser;
     tglPinjam = widget.data.tanggalPeminjaman;
     tglRencanaKembali = widget.data.tanggalKembaliRencana;
 
-    loadPengguna();
-    loadAlat();
+    _loadData();
+  }
 
-    // ✅ Ambil data alat lama
-    if (widget.data.detailPeminjaman.isNotEmpty) {
-      barisAlat = widget.data.detailPeminjaman
-          .map<Map<String, dynamic>>(
-            (e) => {"nama": e.namaAlat, "qty": e.jumlahPeminjaman},
-          )
-          .toList();
-    } else {
-      // fallback jika belum ada detail alat
-      barisAlat = [
-        {"nama": null, "qty": 1},
-      ];
+  Future<void> _editPeminjaman() async {
+    try {
+      if (peminjamTerpilih == null) {
+        throw Exception("Peminjam belum dipilih");
+      }
+
+      if (tglPinjam == null || tglRencanaKembali == null) {
+        throw Exception("Tanggal belum lengkap");
+      }
+
+      final alatValid = barisAlat.where((e) => e.alat != null).toList();
+      if (alatValid.isEmpty) {
+        throw Exception("Minimal pilih 1 alat");
+      }
+
+      final detailAlat = alatValid.map((e) {
+        final ModelAlat alat = e.alat!;
+        return {'id_alat': alat.idAlat, 'qty': e.qty};
+      }).toList();
+
+      await _peminjamanService.editPeminjaman(
+        idPeminjaman: widget.data.idPeminjaman,
+        idUser: peminjamTerpilih!.idUser!,
+        tglPinjam: tglPinjam!,
+        tglRencanaKembali: tglRencanaKembali!,
+        detailAlat: detailAlat,
+      );
+
+      if (mounted) Navigator.pop(context);
+      AlertHelper.showSuccess(context, "Berhasil mengupdate peminjaman");
+    } catch (e) {
+      AlertHelper.showError(context, e.toString());
     }
   }
 
@@ -125,23 +157,30 @@ class _EditDataPeminjamanScreenState extends State<EditDataPeminjamanScreen> {
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: ElevatedButton(
-        onPressed: () {
-          // Logika Update Simpan
-          Navigator.pop(context);
-        },
+        onPressed: isLoading ? null : _editPeminjaman,
         style: ElevatedButton.styleFrom(
           backgroundColor: Theme.of(context).colorScheme.primary,
         ),
-        child: Text(
-          "Simpan Perubahan",
-          style: GoogleFonts.poppins(color: Colors.white, fontSize: 18),
-        ),
+        child: isLoading
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              )
+            : Text(
+                "Simpan Perubahan",
+                style: GoogleFonts.poppins(color: Colors.white, fontSize: 18),
+              ),
       ),
     );
   }
 
   // WIDGET BARIS INPUT (Dropdown + Jumlah)
   Widget _buildBarisInputAlat(int index) {
+    final baris = barisAlat[index];
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Row(
@@ -153,10 +192,7 @@ class _EditDataPeminjamanScreenState extends State<EditDataPeminjamanScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (index == 0)
-                  _buildLabel(
-                    "Pilih alat:",
-                  ), // Label cuma muncul di baris pertama
+                if (index == 0) _buildLabel("Pilih alat:"),
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
@@ -164,28 +200,23 @@ class _EditDataPeminjamanScreenState extends State<EditDataPeminjamanScreen> {
                   ),
                   decoration: _fieldDecoration(),
                   child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: barisAlat[index]['nama'],
-                      style: GoogleFonts.poppins(
-                        color: Theme.of(context).colorScheme.onSecondary,
-                        fontSize: 15
-                      ),
-                      hint: Text(
-                        "Pilih alat",
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          color: Theme.of(context).colorScheme.onSecondary,
-                        ),
-                      ),
+                    child: DropdownButton<ModelAlat>(
+                      value: baris.alat,
                       isExpanded: true,
+                      hint: Text("Pilih alat"),
+                      dropdownColor: Theme.of(context).colorScheme.secondary,
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        color: Theme.of(context).colorScheme.onSecondary,
+                      ),
                       items: listAlat.map((alat) {
-                        return DropdownMenuItem<String>(
-                          value: alat.namaAlat,
+                        return DropdownMenuItem<ModelAlat>(
+                          value: alat,
                           child: Text(alat.namaAlat),
                         );
                       }).toList(),
                       onChanged: (v) {
-                        setState(() => barisAlat[index]['nama'] = v);
+                        setState(() => baris.alat = v);
                       },
                     ),
                   ),
@@ -200,8 +231,7 @@ class _EditDataPeminjamanScreenState extends State<EditDataPeminjamanScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (index == 0)
-                  _buildLabel("Jumlah:"), // Label cuma muncul di baris pertama
+                if (index == 0) _buildLabel("Jumlah:"),
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
@@ -212,18 +242,17 @@ class _EditDataPeminjamanScreenState extends State<EditDataPeminjamanScreen> {
                     textAlign: TextAlign.center,
                     keyboardType: TextInputType.number,
                     onChanged: (v) {
-                      barisAlat[index]['qty'] = int.tryParse(v) ?? 1;
+                      setState(() => baris.qty = int.tryParse(v) ?? 1);
                     },
                     decoration: InputDecoration(
                       border: InputBorder.none,
-                      hintText: barisAlat[index]['qty'].toString(),
+                      hintText: baris.qty.toString(),
                     ),
                   ),
                 ),
               ],
             ),
           ),
-          // Tombol Hapus Baris (jika baris lebih dari 1)
           if (barisAlat.length > 1)
             IconButton(
               icon: Icon(
@@ -252,7 +281,7 @@ class _EditDataPeminjamanScreenState extends State<EditDataPeminjamanScreen> {
         onPressed: () {
           setState(() {
             // Menambah "Template" data kosong ke list agar baris baru muncul
-            barisAlat.add({"nama": null, "qty": 0});
+            barisAlat.add(BarisAlat());
           });
         },
         child: Text(
@@ -281,11 +310,12 @@ class _EditDataPeminjamanScreenState extends State<EditDataPeminjamanScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: _fieldDecoration(),
       child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
+        child: DropdownButton<ModelPengguna>(
           value: peminjamTerpilih,
+          dropdownColor: Theme.of(context).colorScheme.secondary,
           style: GoogleFonts.poppins(
             color: Theme.of(context).colorScheme.onSecondary,
-            fontSize: 15
+            fontSize: 15,
           ),
           hint: Text(
             "Pilih Siswa",
@@ -295,8 +325,8 @@ class _EditDataPeminjamanScreenState extends State<EditDataPeminjamanScreen> {
           ),
           isExpanded: true,
           items: listPengguna.map((item) {
-            return DropdownMenuItem<String>(
-              value: item.userName, // sesuaikan field modelmu
+            return DropdownMenuItem<ModelPengguna>(
+              value: item, // sesuaikan field modelmu
               child: Text(item.userName ?? '-'),
             );
           }).toList(),

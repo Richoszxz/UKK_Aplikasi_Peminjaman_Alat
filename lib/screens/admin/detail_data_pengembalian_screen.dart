@@ -20,7 +20,7 @@ class _DetailPengembalianScreenState extends State<DetailPengembalianScreen> {
   @override
   Widget build(BuildContext context) {
     // Logika untuk mengambil inisial nama
-    String nama = widget.data.peminjaman.first.namaUser ?? "User";
+    String nama = widget.data.peminjaman?.namaUser ?? "User";
     String inisial = nama
         .split(' ')
         .map((e) => e[0])
@@ -63,7 +63,7 @@ class _DetailPengembalianScreenState extends State<DetailPengembalianScreen> {
                     ),
                   ),
                   _buildBadgeStatus(
-                    widget.data.peminjaman.first.statusPeminjaman ??
+                    widget.data.peminjaman?.statusPeminjaman ??
                         "Dikembalikan",
                   ),
                 ],
@@ -74,7 +74,7 @@ class _DetailPengembalianScreenState extends State<DetailPengembalianScreen> {
             // 2. KODE PEMINJAMAN
             _buildStaticField(
               "Kode Peminjaman",
-              widget.data.peminjaman.first.kodePeminjaman ?? "-",
+              widget.data.peminjaman?.kodePeminjaman ?? "-",
             ),
 
             // 3. TANGGAL PINJAM & RENCANA KEMBALI (Sejajar)
@@ -114,7 +114,7 @@ class _DetailPengembalianScreenState extends State<DetailPengembalianScreen> {
                         ),
                         child: Text(
                           formatTanggal(
-                            widget.data.peminjaman.first.tanggalPeminjaman,
+                            widget.data.peminjaman!.tanggalPeminjaman,
                           ),
                           style: GoogleFonts.poppins(
                             fontSize: 15,
@@ -161,7 +161,7 @@ class _DetailPengembalianScreenState extends State<DetailPengembalianScreen> {
                         ),
                         child: Text(
                           formatTanggal(
-                            widget.data.peminjaman.first.tanggalKembaliRencana,
+                            widget.data.peminjaman!.tanggalKembaliRencana,
                           ),
                           style: GoogleFonts.poppins(
                             fontSize: 15,
@@ -225,11 +225,11 @@ class _DetailPengembalianScreenState extends State<DetailPengembalianScreen> {
             // 5. DAFTAR ALAT
             _buildLabel("Daftar alat:"),
             // Kamu bisa mengganti ini dengan ListView.builder jika data alatnya dinamis dalam List
-            ...widget.data.peminjaman.first.detailPeminjaman.map((item) {
+            ...widget.data.peminjaman!.detailPeminjaman.map((item) {
               return _buildItemCardDetail(
                 item.namaAlat,
                 item.jumlahPeminjaman,
-                item.kondisiAlat,
+                item.kondisiKembali!,
                 item.gambarAlat,
               );
             }),
@@ -237,7 +237,7 @@ class _DetailPengembalianScreenState extends State<DetailPengembalianScreen> {
             // 6. KONFIRMASI PETUGAS
             _buildStaticField(
               "Dikonfirmasi oleh",
-              widget.data.dikonfirmasiOleh ?? "Petugas 1",
+              widget.data.namaPengonfirmasi ?? "Petugas 1",
             ),
 
             const SizedBox(height: 20),
