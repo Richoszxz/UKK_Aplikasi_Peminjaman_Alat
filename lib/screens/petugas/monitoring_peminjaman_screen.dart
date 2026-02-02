@@ -24,6 +24,36 @@ class _MonitoringPeminjamanScreenState
       "barang": "1 Kamera DSLR",
     },
   ];
+
+  Future<List<ModelPeminjaman>> ambilDataPeminjaman() async {
+    final result = await SupabaseService.client
+        .from('peminjaman')
+        .select('''
+        *,
+        peminjam:pengguna!peminjaman_id_user_fkey (
+          username
+        ),
+        detail_peminjaman (
+        id_detail_peminjaman,
+        id_peminjaman,
+        id_alat,
+        jumlah_peminjaman,
+        kondisi_awal,
+        kondisi_kembali,
+        denda_kerusakan,
+        alat (
+          nama_alat,
+          gambar_url,
+          kondisi_alat,
+          stok_alat
+        )
+      )
+      ''')
+        .eq('status_peminjaman', 'menunggu');
+
+    return (result as List).map((e) => ModelPeminjaman.fromJson(e)).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -31,20 +61,55 @@ class _MonitoringPeminjamanScreenState
       drawer: NavigationDrawerWidget(),
       body: Padding(
         padding: EdgeInsets.symmetric(horizontal: 10, vertical: 15),
-        child: ListView(
-          children: requests
-              .map(
-                (request) => CardRequestPeminjamanWidget(
-                  kodePeminjaman: request["kode"],
-                  namaPeminjam: request["nama"],
-                  daftarBarang: request["barang"],
-                  disetujui: () => Navigator.of(context).pushNamed('/cetak_kartu_peminjaman'),
-                  ditolak: () {
-                    debugPrint("Reject ${request["kode"]}");
+        child: FutureBuilder(
+          future: ambilDataPeminjaman(),
+          builder: (context, asyncSnapshot) {
+            if (asyncSnapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            if (asyncSnapshot.hasError) {
+              return Center(child: Text("Error: ${asyncSnapshot.error}"));
+            }
+
+            if (!asyncSnapshot.hasData || asyncSnapshot.data!.isEmpty) {
+              return const Center(child: Text("Tidak ada peminjaman menunggu"));
+            }
+            final data = asyncSnapshot.data!;
+            return ListView.builder(
+              itemCount: data.length,
+              itemBuilder: (context, index) {
+                final listPeminjaman = data[index];
+
+                return CardRequestPeminjamanWidget(
+                  kodePeminjaman: listPeminjaman.kodePeminjaman,
+                  namaPeminjam: listPeminjaman.namaUser,
+                  daftarBarang: listPeminjaman.detailPeminjaman
+                      .map(
+                        (item) => 'x${item.jumlahPeminjaman} ${item.namaAlat}',
+                      )
+                      .join(', '),
+                  disetujui: () async {
+                    try {
+                      await PeminjamanService().menyetujuiPeminjaman(
+                        listPeminjaman.idPeminjaman,
+                      );
+
+                      setState(() {});
+
+                      AlertHelper.showSuccess(
+                        context,
+                        'Berhasil menyetujui peminjaman !',
+                      );
+                    } catch (e) {
+                      debugPrint('$e');
+                      AlertHelper.showError(context, '$e');
+                    }
                   },
-                ),
-              )
-              .toList(),
+                );
+              },
+            );
+          },
         ),
       ),
     );

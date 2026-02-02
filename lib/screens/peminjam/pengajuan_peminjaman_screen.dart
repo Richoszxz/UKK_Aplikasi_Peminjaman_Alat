@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:creaventory/export.dart';
 import 'package:creaventory/widgets/card_list_alat_widget.dart';
+import 'package:creaventory/services/keranjang_service.dart';
 
 class PengajuanPeminjamanScreen extends StatefulWidget {
   const PengajuanPeminjamanScreen({super.key});
@@ -11,62 +12,36 @@ class PengajuanPeminjamanScreen extends StatefulWidget {
 }
 
 class _PengajuanPeminjamanScreenState extends State<PengajuanPeminjamanScreen> {
-  List<Map<String, dynamic>> alatList = [
-    {
-      "nama": "Tablet iPad",
-      "kategori": "Elektronik",
-      "spesifikasi": "Layar 10.2 inci, Wi-Fi, 64GB",
-      "deskripsi": "Tablet canggih untuk produktivitas dan hiburan.",
-    },
-    {
-      "nama": "Kamera DSLR",
-      "kategori": "Fotografi",
-      "spesifikasi": "Sensor Full Frame, 24MP",
-      "deskripsi": "Kamera profesional untuk fotografi berkualitas tinggi.",
-    },
-    {
-      "nama": "Proyektor Portabel",
-      "kategori": "Presentasi",
-      "spesifikasi": "Resolusi 1080p, Konektivitas HDMI",
-      "deskripsi": "Proyektor ringan untuk presentasi di mana saja.",
-    },
-    {
-      "nama": "Speaker Bluetooth",
-      "kategori": "Audio",
-      "spesifikasi": "Daya 20W, Tahan Air",
-      "deskripsi": "Speaker nirkabel untuk musik di luar ruangan.",
-    },
-    {
-      "nama": "Laptop Gaming",
-      "kategori": "Komputer",
-      "spesifikasi": "Intel i7, RAM 16GB, GPU RTX 3060",
-      "deskripsi": "Laptop bertenaga tinggi untuk gaming dan multitasking.",
-    },
-  ];
+  final AlatService _alatService = AlatService();
+  final KategoriService _kategoriService = KategoriService();
+  final KeranjangService _keranjangService = KeranjangService();
 
   String selectedKategori = "Semua";
+  List<String> kategoriList = ["Semua"];
+  String keywordPencarian = "";
 
-  List<String> get kategoriList {
-    final kategori = alatList
-        .map((e) => e["kategori"].toString())
-        .toSet()
-        .toList();
+  Future<void> _loadKategori() async {
+    try {
+      final data = await _kategoriService.ambilKategori();
 
-    kategori.insert(0, "Semua");
-    return kategori;
-  }
+      if (!mounted) return;
 
-  List<Map<String, dynamic>> get filteredAlat {
-    if (selectedKategori == "Semua") {
-      return alatList;
+      setState(() {
+        kategoriList = [
+          "Semua",
+          ...(data ?? []).map((e) => e.namaKategori.toString()),
+        ];
+      });
+    } catch (e) {
+      debugPrint("Error kategori: $e");
     }
-
-    return alatList
-        .where((alat) => alat["kategori"] == selectedKategori)
-        .toList();
   }
 
-  int jumlahRequest = 2;
+  @override
+  void initState() {
+    super.initState();
+    _loadKategori();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -75,7 +50,14 @@ class _PengajuanPeminjamanScreenState extends State<PengajuanPeminjamanScreen> {
       drawer: NavigationDrawerWidget(),
       body: Column(
         children: [
-          BarPencarianWidget(hintText: "Cari alat..."),
+          BarPencarianWidget(
+            hintText: "Cari alat...",
+            onSearch: (value) {
+              setState(() {
+                keywordPencarian = value.toLowerCase();
+              });
+            },
+          ),
 
           Padding(
             padding: const EdgeInsets.only(left: 15, bottom: 10),
@@ -83,6 +65,7 @@ class _PengajuanPeminjamanScreenState extends State<PengajuanPeminjamanScreen> {
               children: [
                 Container(
                   height: 35,
+                  width: 100,
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.primary,
@@ -90,7 +73,10 @@ class _PengajuanPeminjamanScreenState extends State<PengajuanPeminjamanScreen> {
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
-                      value: selectedKategori,
+                      isExpanded: true,
+                      value: kategoriList.contains(selectedKategori)
+                          ? selectedKategori
+                          : kategoriList.first,
                       dropdownColor: Theme.of(context).colorScheme.primary,
                       icon: Icon(Icons.arrow_drop_down, color: Colors.white),
                       style: GoogleFonts.poppins(
@@ -98,12 +84,16 @@ class _PengajuanPeminjamanScreenState extends State<PengajuanPeminjamanScreen> {
                         fontWeight: FontWeight.w600,
                       ),
 
-                      items: kategoriList.map((kategori) {
-                        return DropdownMenuItem(
-                          value: kategori,
-                          child: Text(kategori),
-                        );
-                      }).toList(),
+                      items: kategoriList.isEmpty
+                          ? []
+                          : kategoriList
+                                .map(
+                                  (kategori) => DropdownMenuItem<String>(
+                                    value: kategori,
+                                    child: Text(kategori),
+                                  ),
+                                )
+                                .toList(),
 
                       onChanged: (value) {
                         setState(() {
@@ -131,43 +121,107 @@ class _PengajuanPeminjamanScreenState extends State<PengajuanPeminjamanScreen> {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 15),
-              child: GridView.builder(
-                itemCount: alatList.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2, // 2 kolom
-                  crossAxisSpacing: 10,
-                  childAspectRatio: 0.70, // tinggi card
-                ),
-                itemBuilder: (context, index) {
-                  final alat = alatList[index];
+              child: FutureBuilder<List<ModelAlat>>(
+                future: _alatService.ambilAlat(),
+                builder: (context, asyncSnapshot) {
+                  if (asyncSnapshot.connectionState ==
+                      ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (asyncSnapshot.hasError) {
+                    return Center(child: Text("Error: ${asyncSnapshot.error}"));
+                  }
 
-                  return CardListAlatWidget(
-                    namaAlat: alat["nama"]!,
-                    spesifikasiAlat: alat["spesifikasi"]!,
-                    tombolAksi: [
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () {
-                            debugPrint("Pinjam ${alat["nama"]}");
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(
-                              context,
-                            ).colorScheme.primary,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                          child: Text(
-                            "+ Pinjam",
-                            style: GoogleFonts.poppins(
-                              fontSize: 12,
-                              color: Theme.of(context).colorScheme.onPrimary,
-                            ),
-                          ),
-                        ),
+                  final semuaData = asyncSnapshot.data ?? [];
+
+                  final dataAlat = semuaData.where((alat) {
+                    final cocokKategori = selectedKategori == "Semua"
+                        ? true
+                        : alat.namaKategori == selectedKategori;
+
+                    final cocokSearch = alat.namaAlat
+                        .toString()
+                        .toLowerCase()
+                        .contains(keywordPencarian);
+
+                    return cocokKategori && cocokSearch;
+                  }).toList();
+
+                  if (dataAlat.isEmpty) {
+                    return Center(
+                      child: Text(
+                        "Tidak ada alat tersedia",
+                        style: GoogleFonts.poppins(),
                       ),
-                    ],
+                    );
+                  }
+                  return GridView.builder(
+                    itemCount: dataAlat.length,
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2, // 2 kolom
+                          crossAxisSpacing: 10,
+                          childAspectRatio: 0.69, // tinggi card
+                        ),
+                    itemBuilder: (context, index) {
+                      final alat = dataAlat[index];
+
+                      return CardListAlatWidget(
+                        namaAlat: alat.namaAlat,
+                        spesifikasiAlat: alat.spesifikasiAlat!,
+                        gambarUrl: alat.gambarUrl,
+                        tombolAksi: [
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () {
+                                setState(() {
+                                  _keranjangService.tambahItem({
+                                    "id_alat": alat.idAlat,
+                                    "nama": alat.namaAlat,
+                                    "spesifikasi": alat.spesifikasiAlat,
+                                    "gambar": alat.gambarUrl
+                                  });
+                                });
+
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    backgroundColor: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                    content: Text(
+                                      "${alat.namaAlat} ditambahkan ke keranjang",
+                                      style: GoogleFonts.poppins(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onPrimary,
+                                      ),
+                                    ),
+                                    duration: const Duration(seconds: 1),
+                                  ),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Theme.of(
+                                  context,
+                                ).colorScheme.primary,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              child: Text(
+                                "+ Pinjam",
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onPrimary,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   );
                 },
               ),
@@ -179,14 +233,13 @@ class _PengajuanPeminjamanScreenState extends State<PengajuanPeminjamanScreen> {
         clipBehavior: Clip.none,
         children: [
           FloatingActionButton(
-            onPressed: () => Navigator.of(context).pushNamed('/keranjang_peminjaman'),
+            onPressed: () =>
+                Navigator.of(context).pushNamed('/keranjang_peminjaman'),
             backgroundColor: Theme.of(context).colorScheme.primary,
-            child: const Icon(Icons.shopping_bag_outlined, size: 30,),
-            shape: CircleBorder(),
+            child: const Icon(Icons.shopping_bag_outlined),
           ),
 
-          // Badge notifikasi
-          if (jumlahRequest > 0)
+          if (_keranjangService.totalItem > 0)
             Positioned(
               right: -2,
               top: -2,
@@ -199,11 +252,10 @@ class _PengajuanPeminjamanScreenState extends State<PengajuanPeminjamanScreen> {
                 ),
                 child: Center(
                   child: Text(
-                    jumlahRequest.toString(),
+                    _keranjangService.totalItem.toString(),
                     style: GoogleFonts.poppins(
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.onSecondary,
                     ),
                   ),
                 ),

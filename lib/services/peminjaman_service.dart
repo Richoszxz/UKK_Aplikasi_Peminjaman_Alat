@@ -1,4 +1,6 @@
 import 'package:creaventory/export.dart';
+import 'package:flutter/cupertino.dart';
+import 'keranjang_service.dart';
 
 class PeminjamanService {
   final _client = SupabaseService.client;
@@ -127,5 +129,49 @@ class PeminjamanService {
   // Hapus peminjaman
   Future<void> hapusPeminjaman(int idPeminjaman) async {
     await _client.from('peminjaman').delete().eq('id_peminjaman', idPeminjaman);
+  }
+
+  Future<void> mengajukanPeminjaman({
+    required DateTime tanggalRencanaKembali,
+    required List<Map<String, dynamic>> items,
+  }) async {
+    final user = _client.auth.currentUser;
+
+    if (user == null) {
+      throw Exception("User belum login");
+    }
+
+    print(items);
+
+    await _client.rpc(
+      'peminjam_ajukan_peminjaman',
+      params: {
+        'p_id_user': user.id,
+        'p_tgl_rencana': tanggalRencanaKembali.toIso8601String(),
+        'p_items': items
+            .map((e) => {'id_alat': e['id_alat'], 'jumlah': e['jumlah']})
+            .toList(),
+      },
+    );
+  }
+
+  Future<void> menyetujuiPeminjaman(int idPeminjaman) async {
+    await _client.rpc(
+      'petugas_menyetujui_peminjaman',
+      params: {
+        'p_id_peminjaman': idPeminjaman,
+        'p_petugas': _client.auth.currentUser?.id,
+      },
+    );
+  }
+
+  Future<void> konfirmasiPengembalian(int idPengembalian) async {
+    await _client.rpc(
+      'konfirmasi_pengembalian',
+      params: {
+        'p_id_pengembalian': idPengembalian,
+        'p_petugas': _client.auth.currentUser?.id,
+      },
+    );
   }
 }

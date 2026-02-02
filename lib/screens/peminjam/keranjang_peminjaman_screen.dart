@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:creaventory/export.dart';
+import 'package:creaventory/services/keranjang_service.dart';
 
 class KeranjangPeminjamanScreen extends StatefulWidget {
   const KeranjangPeminjamanScreen({super.key});
@@ -10,27 +11,15 @@ class KeranjangPeminjamanScreen extends StatefulWidget {
 }
 
 class _KeranjangPeminjamanScreenState extends State<KeranjangPeminjamanScreen> {
-  List<Map<String, dynamic>> keranjangList = [
-    {
-      "nama": "Tablet iPad",
-      "spesifikasi": "Layar 10.2 inci, Wi-Fi, 64GB",
-      "jumlah": 1,
-      "gambar": null,
-      "tanggalKembali": null,
-    },
-    {
-      "nama": "Kamera DSLR",
-      "spesifikasi": "Sensor Full Frame, 24MP",
-      "jumlah": 1,
-      "gambar": null,
-      "tanggalKembali": null,
-    },
-  ];
+  final KeranjangService _keranjangService = KeranjangService();
+  final PeminjamanService _peminjamanService = PeminjamanService();
 
   DateTime? _selectedTanggal;
 
   @override
   Widget build(BuildContext context) {
+    final keranjangList = _keranjangService.items;
+
     return Scaffold(
       appBar: AppBarWidget(
         judulAppBar: "Keranjang\nPeminjaman",
@@ -48,10 +37,10 @@ class _KeranjangPeminjamanScreenState extends State<KeranjangPeminjamanScreen> {
               child: _cardKeranjangItem(
                 context: context,
                 data: item,
+                index: index,
                 onDelete: () {
-                  setState(() {
-                    keranjangList.removeAt(index);
-                  });
+                  _keranjangService.hapusItem(index);
+                  setState(() {});
                 },
                 onPickDate: (date) {
                   setState(() {
@@ -68,16 +57,44 @@ class _KeranjangPeminjamanScreenState extends State<KeranjangPeminjamanScreen> {
                 context: context,
                 selectedDate: _selectedTanggal,
                 onTap: () async {
+                  // 1️⃣ Pilih tanggal
                   final date = await showDatePicker(
                     context: context,
                     initialDate: _selectedTanggal ?? DateTime.now(),
                     firstDate: DateTime.now(),
                     lastDate: DateTime.now().add(const Duration(days: 365)),
                   );
+
                   if (date != null) {
-                    setState(() {
-                      _selectedTanggal = date;
-                    });
+                    // 2️⃣ Pilih waktu setelah tanggal
+                    final time = await showTimePicker(
+                      context: context,
+                      initialTime: TimeOfDay.fromDateTime(
+                        _selectedTanggal ?? DateTime.now(),
+                      ),
+                    );
+
+                    // 3️⃣ Gabungkan tanggal + waktu
+                    if (time != null) {
+                      setState(() {
+                        _selectedTanggal = DateTime(
+                          date.year,
+                          date.month,
+                          date.day,
+                          time.hour,
+                          time.minute,
+                        );
+                      });
+                    } else {
+                      // Kalau user batal pilih waktu, tetap pakai jam 00:00
+                      setState(() {
+                        _selectedTanggal = DateTime(
+                          date.year,
+                          date.month,
+                          date.day,
+                        );
+                      });
+                    }
                   }
                 },
               ),
@@ -109,7 +126,46 @@ class _KeranjangPeminjamanScreenState extends State<KeranjangPeminjamanScreen> {
             height: double.infinity,
             decoration: BoxDecoration(borderRadius: BorderRadius.circular(10)),
             child: ElevatedButton(
-              onPressed: () {},
+              onPressed: () async {
+                if (_keranjangService.items.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Keranjang masih kosong")),
+                  );
+                  return;
+                }
+
+                if (_selectedTanggal == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Pilih tanggal pengembalian")),
+                  );
+                  return;
+                }
+
+                try {
+                  await _peminjamanService.mengajukanPeminjaman(
+                    tanggalRencanaKembali: _selectedTanggal!,
+                    items: _keranjangService.items,
+                  );
+
+                  _keranjangService.clear();
+
+                  if (!mounted) return;
+
+                  AlertHelper.showSuccess(
+                    context,
+                    'Berhasil mengajukan peminjaman !',
+                  );
+
+                  Navigator.pop(context);
+                } catch (e) {
+                  debugPrint('$e');
+                  AlertHelper.showError(
+                    context,
+                    'Gagal mengajukan peminjaman !',
+                  );
+                }
+              },
+
               style: ElevatedButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.primary,
               ),
@@ -130,6 +186,7 @@ class _KeranjangPeminjamanScreenState extends State<KeranjangPeminjamanScreen> {
   Widget _cardKeranjangItem({
     required BuildContext context,
     required Map<String, dynamic> data,
+    required int index,
     required VoidCallback onDelete,
     required Function(DateTime date) onPickDate,
   }) {
@@ -155,14 +212,25 @@ class _KeranjangPeminjamanScreenState extends State<KeranjangPeminjamanScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               /// Gambar
-              Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  color: Colors.grey.shade300,
-                ),
-                child: const Icon(Icons.image, size: 40),
+              ClipRRect(
+                child:
+                    data['gambar'] != null &&
+                        data['gambar'].toString().isNotEmpty
+                    ? Image.network(
+                        data['gambar'],
+                        width: 100,
+                        height: 100,
+                        fit: BoxFit.cover,
+                      )
+                    : Container(
+                        width: 100,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          color: Colors.grey.shade300,
+                        ),
+                        child: const Icon(Icons.image, size: 40),
+                      ),
               ),
 
               const SizedBox(width: 12),
@@ -175,6 +243,7 @@ class _KeranjangPeminjamanScreenState extends State<KeranjangPeminjamanScreen> {
                   children: [
                     Text(
                       data["nama"],
+
                       style: GoogleFonts.poppins(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -186,7 +255,7 @@ class _KeranjangPeminjamanScreenState extends State<KeranjangPeminjamanScreen> {
 
                     Text(
                       data["spesifikasi"],
-                      maxLines: 2,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.poppins(
                         fontSize: 13,
@@ -226,7 +295,12 @@ class _KeranjangPeminjamanScreenState extends State<KeranjangPeminjamanScreen> {
                             ),
                             onChanged: (value) {
                               final qty = int.tryParse(value) ?? 1;
-                              data["jumlah"] = qty < 1 ? 1 : qty;
+                              setState(() {
+                                _keranjangService.updateJumlah(
+                                  index,
+                                  qty < 1 ? 1 : qty,
+                                );
+                              });
                             },
                           ),
                         ),

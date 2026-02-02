@@ -36,8 +36,8 @@ class _SignupScreenState extends State<SignupScreen> {
 
       try {
         final response = await _authService.signUp(
-          emailController.text,
-          passwordController.text,
+          emailController.text.trim(),
+          passwordController.text.trim(),
           usernameController.text,
         );
 

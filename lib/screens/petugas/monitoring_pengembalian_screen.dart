@@ -13,34 +13,60 @@ class MonitoringPengembalianScreen extends StatefulWidget {
 
 class _MonitoringPengembalianScreenState
     extends State<MonitoringPengembalianScreen> {
-  final List<Map<String, dynamic>> listDataMonitoringPengembalian = [
-    {
-      "kode": "TRX24578965",
-      "nama": "Richo Ferdinand",
-      "email": "richoferdinand@gmail.com",
-      "barang": [
-        {"nama": "iPad M3 Pro", "qty": 1},
-        {"nama": "Stylus Pen", "qty": 1},
-      ],
-      "tglPinjam": "18/01/2026",
-      "tglRencanaPengembalian": "19/01/2026",
-      "tglPengembalian": "19/01/2026",
-      "terlambat": false,
-    },
-    {
-      "kode": "TRX45672905",
-      "nama": "Richa Ferdinyoy",
-      "email": "richonyoy@gmail.com",
-      "barang": [
-        {"nama": "iPad M3 Pro", "qty": 1},
-        {"nama": "Stylus Pen", "qty": 1},
-      ],
-      "tglPinjam": "17/01/2026",
-      "tglRencanaPengembalian": "19/01/2026",
-      "tglPengembalian": "20/01/2026",
-      "terlambat": true,
-    },
-  ];
+  Future<List<ModelPengembalian>> ambilPengembalian() async {
+    final result = await SupabaseService.client
+        .from('pengembalian')
+        .select('''
+          *, 
+          pengonfirmasi:pengguna!pengembalian_dikonfirmasi_oleh_fkey(
+          username
+          ),
+          peminjaman(
+          id_peminjaman,
+          id_user,
+          tanggal_peminjaman,
+          tanggal_kembali_rencana,
+          status_peminjaman,
+          kode_peminjaman,
+          peminjam:pengguna!peminjaman_id_user_fkey (
+                    username
+                  ),
+          detail_peminjaman (
+          id_detail_peminjaman,
+          id_peminjaman,
+          id_alat,
+          jumlah_peminjaman,
+          kondisi_awal,
+          kondisi_kembali,
+          alat (
+            nama_alat,
+            gambar_url,
+            kondisi_alat,
+            stok_alat
+            )
+          )
+        )
+          
+          ''')
+        .isFilter('dikonfirmasi_oleh', null)
+        .order('created_at', ascending: false);
+
+    // Pastikan result adalah List<Map<String,dynamic>>
+    if (result is List) {
+      return result
+          .map(
+            (item) => ModelPengembalian.fromJson(item as Map<String, dynamic>),
+          )
+          .toList();
+    }
+
+    // Jika bukan list, kembalikan list kosong
+    return [];
+  }
+
+  String formatTanggal(DateTime date) {
+    return "${date.day}/${date.month}/${date.year}";
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,30 +75,49 @@ class _MonitoringPengembalianScreenState
       drawer: NavigationDrawerWidget(),
       body: Padding(
         padding: EdgeInsets.symmetric(horizontal: 10, vertical: 15),
-        child: ListView(
-          children: listDataMonitoringPengembalian
-              .map(
-                (data) => CardListMonitoringPengembalianWidget(
-                  kodePeminjaman: data["kode"]!,
-                  namaPeminjam: data["nama"]!,
-                  listAlatDikembalikan: data['barang']
-                      .map((data) => "${data["qty"]} ${data["nama"]}")
-                      .join(", "),
-                  tanggalPinjam: data["tglPinjam"]!,
-                  tanggalPengembalian: data["tglPengembalian"]!,
-                  terlambat: data["terlambat"]!,
-                  aksiVerifikasiPengembalian: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            KonfirmasiPengembalianScreen(dataPengembalian: data),
-                      ),
-                    );
-                  },
+        child: FutureBuilder<List<ModelPengembalian>>(
+          future: ambilPengembalian(),
+          builder: (context, asyncSnapshot) {
+            if (asyncSnapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            if (!asyncSnapshot.hasData || asyncSnapshot.data!.isEmpty) {
+              return Center(
+                child: Text(
+                  "Belum ada data pengembalian",
+                  style: GoogleFonts.poppins(),
                 ),
-              )
-              .toList(),
+              );
+            }
+
+            final data = asyncSnapshot.data!;
+            return ListView.builder(
+              itemCount: data.length,
+              itemBuilder: (context, index) {
+                final listPengembalian = data[index];
+
+                return CardListMonitoringPengembalianWidget(
+                  kodePeminjaman: listPengembalian.peminjaman!.kodePeminjaman!,
+                  namaPeminjam: listPengembalian.peminjaman!.namaUser!,
+                  tanggalPinjam: formatTanggal(
+                    listPengembalian.peminjaman!.tanggalPeminjaman,
+                  ),
+                  tanggalPengembalian: formatTanggal(
+                    listPengembalian.tanggalKembaliAsli,
+                  ),
+                  listAlatDikembalikan: listPengembalian
+                      .peminjaman!
+                      .detailPeminjaman
+                      .map(
+                        (item) => 'x${item.jumlahPeminjaman} ${item.namaAlat}',
+                      )
+                      .join(', '),
+                  terlambat: listPengembalian.totalDenda! > 0,
+                );
+              },
+            );
+          },
         ),
       ),
     );
