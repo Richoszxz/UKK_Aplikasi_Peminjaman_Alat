@@ -160,16 +160,16 @@ class _KonfirmasiPengembalianScreenState
                     detailPengembalian: detailJson,
                   );
 
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("Pengembalian berhasil dikonfirmasi"),
-                    ),
+                  if (mounted) Navigator.pop(context);
+                  AlertHelper.showSuccess(
+                    context,
+                    'Berhasil mengonfirmasi pengembalian',
                   );
                 } catch (e) {
                   debugPrint('$e');
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Gagal konfirmasi: $e")),
+                  AlertHelper.showError(
+                    context,
+                    'Gagal mengonfirmasi pengembalian !',
                   );
                 }
               },

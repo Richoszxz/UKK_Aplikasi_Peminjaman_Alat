@@ -81,7 +81,7 @@ class _RiwayatPeminjamanScreenState extends State<RiwayatPeminjamanScreen> {
                 final listAlatDipinjam = detailPeminjaman
                     .map(
                       (d) =>
-                          "${d['jumlah_peminjaman']} ${d['alat']['nama_alat']}",
+                          "x${d['jumlah_peminjaman']} ${d['alat']['nama_alat']}",
                     )
                     .join(", ");
 

@@ -56,11 +56,7 @@ class _MonitoringPengembalianScreenState
     debugPrint("Result content: $result");
 
     // Pastikan result adalah List<Map<String,dynamic>>
-    return result
-        .map(
-          (item) => ModelPengembalian.fromJson(item),
-        )
-        .toList();
+    return result.map((item) => ModelPengembalian.fromJson(item)).toList();
   }
 
   String formatTanggal(DateTime date) {
@@ -121,7 +117,7 @@ class _MonitoringPengembalianScreenState
                           dataPengembalian: listPengembalian,
                         ),
                       ),
-                    );
+                    ).then((_) => setState(() {}));
                   },
                 );
               },

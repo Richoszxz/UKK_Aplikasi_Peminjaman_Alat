@@ -101,7 +101,7 @@ class _MonitoringPeminjamanScreenState
                                 dataPeminjaman: listPeminjaman,
                               ),
                             ),
-                          );
+                          ).then((_) => setState(() {}));
                         },
                       );
                     } catch (e) {
