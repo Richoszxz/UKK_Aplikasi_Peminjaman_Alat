@@ -129,14 +129,30 @@ class _KeranjangPeminjamanScreenState extends State<KeranjangPeminjamanScreen> {
               onPressed: () async {
                 if (_keranjangService.items.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Keranjang masih kosong")),
+                    SnackBar(
+                      content: Text(
+                        "Keranjang masih kosong",
+                        style: GoogleFonts.poppins(
+                          color: Theme.of(context).colorScheme.onPrimary,
+                        ),
+                      ),
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                    ),
                   );
                   return;
                 }
 
                 if (_selectedTanggal == null) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Pilih tanggal pengembalian")),
+                    SnackBar(
+                      content: Text(
+                        "Pilih tanggal pengembalian",
+                        style: GoogleFonts.poppins(
+                          color: Theme.of(context).colorScheme.onPrimary,
+                        ),
+                      ),
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                    ),
                   );
                   return;
                 }

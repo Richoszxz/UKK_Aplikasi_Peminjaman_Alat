@@ -17,6 +17,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int alatDipinjam = 0;
   int alatTersedia = 0;
   bool isLoading = true;
+  bool isCetakLoading = false;
 
   Future<void> loadDashboard() async {
     try {
@@ -40,7 +41,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final dipinjam = await client
           .from('detail_peminjaman')
           .select('jumlah_peminjaman, peminjaman!inner(status_peminjaman)')
-          .inFilter('peminjaman.status_peminjaman', ['menunggu', 'dipinjam']);
+          .eq('peminjaman.status_peminjaman', 'dipinjam');
 
       int totalDipinjam = 0;
       for (final item in dipinjam) {
@@ -171,6 +172,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     await Printing.layoutPdf(onLayout: (format) async => pdf.save());
   }
 
+  Future<void> _handleCetak() async {
+    setState(() => isCetakLoading = true);
+    try {
+      await cetakLaporan();
+    } finally {
+      if (mounted) setState(() => isCetakLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -183,17 +193,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              buildDashboardCard(
-                context,
-                "Pengguna Aktif",
-                isLoading ? "-" : penggunaAktif.toString(),
-                Theme.of(context).colorScheme.secondary,
+              Expanded(
+                child: buildDashboardCard(
+                  context,
+                  "Pengguna Aktif",
+                  isLoading ? "-" : penggunaAktif.toString(),
+                  Theme.of(context).colorScheme.secondary,
+                ),
               ),
-              buildDashboardCard(
-                context,
-                "Jumlah Alat",
-                isLoading ? "-" : jumlahAlat.toString(),
-                Theme.of(context).colorScheme.secondary,
+              Expanded(
+                child: buildDashboardCard(
+                  context,
+                  "Jumlah Alat",
+                  isLoading ? "-" : jumlahAlat.toString(),
+                  Theme.of(context).colorScheme.secondary,
+                ),
               ),
             ],
           ),
@@ -201,17 +215,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              buildDashboardCard(
-                context,
-                "Alat Dipinjam",
-                isLoading ? "-" : alatDipinjam.toString(),
-                Theme.of(context).colorScheme.secondary,
+              Expanded(
+                child: buildDashboardCard(
+                  context,
+                  "Alat Dipinjam",
+                  isLoading ? "-" : alatDipinjam.toString(),
+                  Theme.of(context).colorScheme.secondary,
+                ),
               ),
-              buildDashboardCard(
-                context,
-                "Alat Tersedia",
-                isLoading ? "-" : alatTersedia.toString(),
-                Theme.of(context).colorScheme.secondary,
+              Expanded(
+                child: buildDashboardCard(
+                  context,
+                  "Alat Tersedia",
+                  isLoading ? "-" : alatTersedia.toString(),
+                  Theme.of(context).colorScheme.secondary,
+                ),
               ),
             ],
           ),
@@ -283,12 +301,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     ),
                     const SizedBox(width: 15),
-                    Text(
-                      "Laporan Peminjaman dan\nPengembalian Hari Ini",
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.onSecondary,
+                    Expanded(
+                      child: Text(
+                        "Laporan Peminjaman dan Pengembalian Hari Ini",
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.onSecondary,
+                        ),
                       ),
                     ),
                   ],
@@ -304,32 +326,196 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    onPressed: () async {
-                      await cetakLaporan();
-                    },
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.print_outlined,
-                          size: 24,
-                          color: Theme.of(context).colorScheme.onPrimary,
-                        ),
-                        const SizedBox(width: 5),
-                        Text(
-                          "Cetak",
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Theme.of(context).colorScheme.onPrimary,
+                    onPressed: isCetakLoading ? null : _handleCetak,
+                    child: isCetakLoading
+                        ? SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 3,
+                              color: Theme.of(context).colorScheme.onPrimary,
+                            ),
+                          )
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.print_outlined,
+                                size: 24,
+                                color: Theme.of(context).colorScheme.onPrimary,
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                "Cetak",
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onPrimary,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
-                    ),
                   ),
                 ),
               ],
             ),
+          ),
+
+          SizedBox(height: 15),
+
+          // peminjaman hari ini
+          Text(
+            "Peminjaman dan Pengembalian Hari ini:",
+            style: GoogleFonts.poppins(
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF424242),
+            ),
+          ),
+
+          SizedBox(height: 10),
+
+          FutureBuilder<List<dynamic>>(
+            future: fetchLaporanHariIni(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                return Text(
+                  "Belum ada data hari ini",
+                  style: GoogleFonts.poppins(),
+                );
+              }
+
+              final data = snapshot.data!;
+
+              return ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: data.length,
+                itemBuilder: (context, index) {
+                  final p = data[index];
+                  final isDipinjam = p['status_peminjaman'] == 'dipinjam';
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.secondary,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          blurRadius: 5,
+                          color: Colors.black.withOpacity(0.25),
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        /// KODE + STATUS
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              p['kode_peminjaman'],
+                              style: GoogleFonts.poppins(
+                                fontSize: 16,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSecondary,
+                              ),
+                            ),
+
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isDipinjam
+                                    ? Color(0xFFE3F2FD)
+                                    : Color(0xFFE6F4EA),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                p['status_peminjaman'].toUpperCase(),
+                                style: GoogleFonts.poppins(
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDipinjam
+                                      ? const Color(0xFF1E88E5)
+                                      : Color(0xFF2E7D32),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        /// NAMA PEMINJAM
+                        Text(
+                          p['pengguna']['username'],
+                          style: GoogleFonts.poppins(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.onSecondary,
+                          ),
+                        ),
+
+                        const SizedBox(height: 6),
+
+                        /// TANGGAL PINJAM
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.calendar_month,
+                              size: 14,
+                              color: Theme.of(context).colorScheme.onSecondary,
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              "Tanggal Pinjam: ${p['tanggal_peminjaman'].toString().substring(0, 10)}",
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        /// TANGGAL KEMBALI
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.event_available,
+                              size: 14,
+                              color: Theme.of(context).colorScheme.onSecondary,
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              "Tanggal Kembali: ${p['tanggal_kembali_rencana'].toString().substring(0, 10)}",
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              );
+            },
           ),
         ],
       ),
@@ -345,8 +531,7 @@ Widget buildDashboardCard(
 ) {
   return Container(
     margin: EdgeInsets.all(5),
-    height: MediaQuery.of(context).size.height * 0.20,
-    width: MediaQuery.of(context).size.width * 0.43,
+    constraints: BoxConstraints(minHeight: 140),
     decoration: BoxDecoration(
       color: color,
       borderRadius: BorderRadius.circular(20),
@@ -370,12 +555,15 @@ Widget buildDashboardCard(
               color: Theme.of(context).colorScheme.onSecondary,
             ),
           ),
-          Text(
-            count,
-            style: GoogleFonts.poppins(
-              fontSize: 48,
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).colorScheme.onSecondary,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              count,
+              style: GoogleFonts.poppins(
+                fontSize: 48,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.onSecondary,
+              ),
             ),
           ),
         ],

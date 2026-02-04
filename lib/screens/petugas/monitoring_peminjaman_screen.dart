@@ -13,6 +13,7 @@ class MonitoringPeminjamanScreen extends StatefulWidget {
 
 class _MonitoringPeminjamanScreenState
     extends State<MonitoringPeminjamanScreen> {
+  final PeminjamanService _peminjamanService = PeminjamanService();
   Future<List<ModelPeminjaman>> ambilDataPeminjaman() async {
     final result = await SupabaseService.client
         .from('peminjaman')
@@ -107,6 +108,25 @@ class _MonitoringPeminjamanScreenState
                     } catch (e) {
                       debugPrint('$e');
                       AlertHelper.showError(context, '$e');
+                    }
+                  },
+                  ditolak: () async {
+                    try {
+                      await PeminjamanService().menolakPeminjaman(
+                        listPeminjaman.idPeminjaman,
+                      );
+
+                      AlertHelper.showSuccess(
+                        context,
+                        'Berhasil menolak peminjaman !',
+                        onOk: () => setState(() {}),
+                      );
+                    } catch (e) {
+                      debugPrint('$e');
+                      AlertHelper.showError(
+                        context,
+                        'Gagal menolak peminjaman !',
+                      );
                     }
                   },
                 );

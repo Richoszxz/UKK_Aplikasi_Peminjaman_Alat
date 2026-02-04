@@ -58,10 +58,13 @@ class PengembalianService {
         .eq('id_pengembalian', idPengembalian);
   }
 
-  Future<void> ajukanPengembalian({required int id_peminjaman}) async {
+  Future<void> ajukanPengembalian({
+    required int id_peminjaman,
+    String? catatan,
+  }) async {
     await _client.rpc(
       'peminjam_mengajukan_pengembalian',
-      params: {'p_id_peminjaman': id_peminjaman},
+      params: {'p_id_peminjaman': id_peminjaman, 'p_catatan': catatan},
     );
   }
 

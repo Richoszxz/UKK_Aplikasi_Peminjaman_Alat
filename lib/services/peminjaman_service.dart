@@ -162,4 +162,14 @@ class PeminjamanService {
       },
     );
   }
+
+  Future<void> menolakPeminjaman(int idPeminjaman) async {
+    await _client.rpc(
+      'petugas_menolak_peminjaman',
+      params: {
+        'p_id_peminjaman': idPeminjaman,
+        'p_petugas': _client.auth.currentUser?.id,
+      },
+    );
+  }
 }

@@ -18,9 +18,10 @@ class _SplashScreenState extends State<SplashScreen> {
 
     if (!mounted) return;
 
-    if (role != null) {
-      // ✅ Sudah login
+    if (role == 'admin' || role == 'petugas') {
       Navigator.pushReplacementNamed(context, '/dashboard');
+    } else if (role == 'peminjam') {
+      Navigator.pushReplacementNamed(context, '/pengajuan_peminjaman');
     } else {
       // ❌ Belum login
       Navigator.pushReplacementNamed(context, '/login');

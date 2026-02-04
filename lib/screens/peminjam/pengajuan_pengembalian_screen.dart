@@ -53,11 +53,13 @@ class _PengajuanPengembalianScreenState
             const SizedBox(height: 6),
 
             ...detail.map((item) {
+              debugPrint('GAMBAR URL: ${item['alat']['gambar_url']}');
               return Padding(
                 padding: EdgeInsets.only(bottom: 10),
                 child: _alatItem({
                   'nama': item['alat']['nama_alat'],
                   'qty': item['jumlah_peminjaman'],
+                  'gambar': item['alat']['gambar_url'],
                 }),
               );
             }),
@@ -104,6 +106,9 @@ class _PengajuanPengembalianScreenState
 
                   await _pengembalianService.ajukanPengembalian(
                     id_peminjaman: idPeminjaman,
+                    catatan: catatanController.text.trim().isEmpty
+                        ? null
+                        : catatanController.text.trim(),
                   );
 
                   if (mounted) Navigator.pop(context);
@@ -155,14 +160,23 @@ class _PengajuanPengembalianScreenState
       child: Row(
         children: [
           // Gambar
-          Container(
-            width: 100,
-            height: 100,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade300,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.image, size: 40),
+          ClipRRect(
+            child: (alat['gambar'] != null && alat['gambar'] != '')
+                ? Image.network(
+                    alat['gambar'],
+                    fit: BoxFit.cover,
+                    height: 100,
+                    width: 100,
+                  )
+                : Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.image, size: 40),
+                  ),
           ),
 
           const SizedBox(width: 12),

@@ -84,7 +84,7 @@ class _NavigationDrawerWidgetState extends State<NavigationDrawerWidget> {
                           onPressed: () => Navigator.pushNamed(context, '/profil'),
                           style: TextButton.styleFrom(padding: EdgeInsets.zero),
                           child: Text(
-                            "Lihat Profile",
+                            "Lihat Profil",
                             style: GoogleFonts.poppins(
                               color: const Color(0xFFD0E6D1),
                               fontSize: 18,
@@ -100,11 +100,9 @@ class _NavigationDrawerWidgetState extends State<NavigationDrawerWidget> {
             },
           ),
 
-          // 1. SEMUA ROLE
-          _buildItem(Icons.dashboard_outlined, 'Dashboard', '/dashboard'),
-
           // 2. KHUSUS ADMIN (Manajemen)
           if (_role == 'admin') ...[
+            _buildItem(Icons.dashboard_outlined, 'Dashboard', '/dashboard'),
             _buildItem(Icons.group_outlined, 'Manajemen Pengguna', '/manajemen_pengguna'),
             _buildItem(Icons.build_outlined, 'Manajemen Alat', '/manajemen_alat'),
             _buildItem(Icons.category_outlined, 'Manajemen Kategori', '/manajemen_kategori'),
@@ -115,6 +113,7 @@ class _NavigationDrawerWidgetState extends State<NavigationDrawerWidget> {
 
           // 3. KHUSUS PETUGAS (Monitoring)
           if (_role == 'petugas') ...[
+            _buildItem(Icons.dashboard_outlined, 'Dashboard', '/dashboard'),
             _buildItem(Icons.track_changes_outlined, 'Monitoring Peminjaman', '/monitoring_peminjaman'),
             _buildItem(Icons.fact_check_outlined, 'Monitoring Pengembalian', '/monitoring_pengembalian'),
           ],

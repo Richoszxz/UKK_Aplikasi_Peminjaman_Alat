@@ -29,7 +29,8 @@ class _RiwayatPeminjamanScreenState extends State<RiwayatPeminjamanScreen> {
           detail_peminjaman (
             jumlah_peminjaman,
             alat (
-              nama_alat
+              nama_alat,
+              gambar_url
             )
           )
         ''')

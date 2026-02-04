@@ -55,7 +55,6 @@ class _CardListAlatWidgetState extends State<CardListAlatWidget> {
             Container(
               height: 140,
               decoration: const BoxDecoration(
-                color: Color(0xFF248250),
                 borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
               ),
               child: ClipRRect(
@@ -98,46 +97,44 @@ class _CardListAlatWidgetState extends State<CardListAlatWidget> {
             ),
 
             // ================= BODY =================
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: const BoxDecoration(
-                  color: Color(0xFFD0E6D1),
-                  borderRadius: BorderRadius.vertical(
-                    bottom: Radius.circular(20),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: const BoxDecoration(
+                color: Color(0xFFD0E6D1),
+                borderRadius: BorderRadius.vertical(
+                  bottom: Radius.circular(20),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.namaAlat,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF248250),
+                    ),
                   ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.namaAlat,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF248250),
-                      ),
+                  Text(
+                    widget.spesifikasiAlat,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.poppins(
+                      fontSize: 13,
+                      color: const Color(0xFF248250),
                     ),
-                    Text(
-                      widget.spesifikasiAlat,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.poppins(
-                        fontSize: 13,
-                        color: const Color(0xFF248250),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-
-                    // ================= ACTION BUTTON =================
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: widget.tombolAksi,
-                    ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 10),
+            
+                  // ================= ACTION BUTTON =================
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: widget.tombolAksi,
+                  ),
+                ],
               ),
             ),
           ],

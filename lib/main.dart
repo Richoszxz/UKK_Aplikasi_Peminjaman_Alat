@@ -17,10 +17,10 @@ import 'screens/petugas/monitoring_pengembalian_screen.dart';
 import 'screens/admin/tambah_alat_screen.dart';
 import 'screens/admin/tambah_kategori_screen.dart';
 import 'screens/admin/edit_kategori_screen.dart';
-import 'screens/petugas/cetak_kartu_peminjaman_screen.dart';
 import 'screens/peminjam/keranjang_peminjaman_screen.dart';
 import 'screens/log_aktivitas_screen.dart';
 import 'screens/profil_screen.dart';
+import 'screens/peminjam/pengajuan_peminjaman_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

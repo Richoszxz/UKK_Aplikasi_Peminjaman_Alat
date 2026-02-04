@@ -21,50 +21,54 @@ class _DetailAlatScreenState extends State<DetailAlatScreen> {
       appBar: AppBarWidget(judulAppBar: "Detail Alat", tombolKembali: true),
       body: Padding(
         padding: EdgeInsets.symmetric(vertical: 15, horizontal: 10),
-        child: Column(
-          children: [
-            _buildImage(),
-
-            SizedBox(height: 10,),
-
-            // nama alat
-            Text(
-              widget.alat.namaAlat,
-              style: GoogleFonts.poppins(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF424242),
-              ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                _buildImage(),
+            
+                SizedBox(height: 10,),
+            
+                // nama alat
+                Text(
+                  widget.alat.namaAlat,
+                  style: GoogleFonts.poppins(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF424242),
+                  ),
+                ),
+            
+                // kat alat
+                Text(
+                  widget.alat.namaKategori.toString(),
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF424242),
+                  ),
+                ),
+            
+                SizedBox(height: 15),
+            
+                // ================= STOK =================
+                _label("Stok Alat"),
+                _readonlyField(widget.alat.stokAlat.toString()),
+            
+                SizedBox(height: 15),
+            
+                // ================= SPESIFIKASI =================
+                _label("Spesifikasi"),
+                _readonlyField(widget.alat.spesifikasiAlat.toString(), maxLines: 2),
+            
+                SizedBox(height: 15),
+            
+                // ================= DESKRIPSI =================
+                _label("Deskripsi"),
+                _readonlyField(widget.alat.deskripsiAlat.toString(), maxLines: 2),
+              ],
             ),
-
-            // kat alat
-            Text(
-              widget.alat.namaKategori.toString(),
-              style: GoogleFonts.poppins(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF424242),
-              ),
-            ),
-
-            SizedBox(height: 15),
-
-            // ================= STOK =================
-            _label("Stok Alat"),
-            _readonlyField(widget.alat.stokAlat.toString()),
-
-            SizedBox(height: 15),
-
-            // ================= SPESIFIKASI =================
-            _label("Spesifikasi"),
-            _readonlyField(widget.alat.spesifikasiAlat.toString(), maxLines: 2),
-
-            SizedBox(height: 15),
-
-            // ================= DESKRIPSI =================
-            _label("Deskripsi"),
-            _readonlyField(widget.alat.deskripsiAlat.toString(), maxLines: 2),
-          ],
+          ),
         ),
       ),
     );

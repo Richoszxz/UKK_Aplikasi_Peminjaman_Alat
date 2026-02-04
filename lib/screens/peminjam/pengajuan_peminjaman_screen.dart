@@ -106,11 +106,14 @@ class _PengajuanPeminjamanScreenState extends State<PengajuanPeminjamanScreen> {
 
                 const SizedBox(width: 10),
 
-                Text(
-                  "Kategori terpilih: $selectedKategori",
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    color: Color(0xFF424242),
+                Expanded(
+                  child: Text(
+                    "Kategori terpilih: $selectedKategori",
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: Color(0xFF424242),
+                    ),
                   ),
                 ),
               ],
@@ -155,14 +158,34 @@ class _PengajuanPeminjamanScreenState extends State<PengajuanPeminjamanScreen> {
                       ),
                     );
                   }
+
+                  final screenWidth = MediaQuery.of(context).size.width;
+
+                  // Atur jumlah kolom & childAspectRatio sesuai lebar layar
+                  int crossAxisCount;
+                  double childAspectRatio;
+
+                  if (screenWidth >= 1200) {
+                    crossAxisCount = 4;
+                    childAspectRatio = 1.20;
+                  } else if (screenWidth >= 800) {
+                    crossAxisCount = 3;
+                    childAspectRatio = 0.6;
+                  } else if (screenWidth >= 600) {
+                    crossAxisCount = 2;
+                    childAspectRatio = 0.65;
+                  } else {
+                    crossAxisCount = 2;
+                    childAspectRatio = 0.69; // HP
+                  }
+
                   return GridView.builder(
                     itemCount: dataAlat.length,
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2, // 2 kolom
-                          crossAxisSpacing: 10,
-                          childAspectRatio: 0.74, // tinggi card
-                        ),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: crossAxisCount, // 2 kolom
+                      crossAxisSpacing: 10,
+                      childAspectRatio: childAspectRatio, // tinggi card
+                    ),
                     itemBuilder: (context, index) {
                       final alat = dataAlat[index];
 
